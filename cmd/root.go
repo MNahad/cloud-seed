@@ -8,12 +8,10 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "Cloud Seed",
-	Short: "Cloud Seed is a Terraform multi-cloud configuration generator for serverless apps",
-	Long:  "Deploy serverless apps without worrying about GCP or AWS infrastructure management",
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Hello world")
-	},
+	Use:     "cloud-seed",
+	Aliases: []string{"seed"},
+	Short:   "Deploy serverless apps without worrying about GCP or AWS infrastructure management",
+	Long:    "Cloud Seed is a Terraform multi-cloud configuration generator for serverless apps",
 }
 
 func Execute() {
@@ -21,4 +19,8 @@ func Execute() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+}
+
+func init() {
+	rootCmd.AddCommand(buildCmd)
 }
