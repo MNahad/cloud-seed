@@ -1,6 +1,6 @@
 module github.com/mnahad/cloud-seed
 
-go 1.17
+go 1.18
 
 require (
 	github.com/aws/constructs-go/constructs/v10 v10.0.75
