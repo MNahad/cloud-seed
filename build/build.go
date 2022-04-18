@@ -7,9 +7,9 @@ import (
 )
 
 func Build(env *string) (*project.Config, *cdktf.App) {
-	conf := project.MergeConfig(project.DetectConfig(), env)
+	conf := project.DetectConfig().MergeConfig(env)
 	app := cdktf.NewApp(nil)
-	stackbuilder.NewStack(&app, "CloudSeed", env, conf)
+	stackbuilder.NewStack(&app, "CloudSeed", env, &conf)
 	app.Synth()
-	return conf, &app
+	return &conf, &app
 }

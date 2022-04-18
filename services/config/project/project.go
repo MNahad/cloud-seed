@@ -22,21 +22,10 @@ type ProjectConfig struct {
 	EnvironmentOverrides map[string]Config `json:"environmentOverrides"`
 }
 
-func DetectConfig() *ProjectConfig {
-	config := new(ProjectConfig)
-	pwd, err := os.Getwd()
-	terminateOnErr(err)
-	raw, err := ioutil.ReadFile(filepath.Join(pwd, "cloudseed.json"))
-	terminateOnErr(err)
-	err = json.Unmarshal(raw, config)
-	terminateOnErr(err)
-	return config
-}
-
-func MergeConfig(config *ProjectConfig, env *string) *Config {
+func (projectConfig *ProjectConfig) MergeConfig(env *string) Config {
 	conf := new(Config)
-	*conf = config.Default
-	envConf := config.EnvironmentOverrides[*env]
+	*conf = projectConfig.Default
+	envConf := projectConfig.EnvironmentOverrides[*env]
 	if envConf.Cloud.Gcp.Project != "" {
 		conf.Cloud.Gcp.Project = envConf.Cloud.Gcp.Project
 	}
@@ -74,7 +63,18 @@ func MergeConfig(config *ProjectConfig, env *string) *Config {
 		conf.SecretVariableNames = make([]string, 0)
 	}
 	conf.SecretVariableNames = append(conf.SecretVariableNames, envConf.SecretVariableNames...)
-	return conf
+	return *conf
+}
+
+func DetectConfig() *ProjectConfig {
+	config := new(ProjectConfig)
+	pwd, err := os.Getwd()
+	terminateOnErr(err)
+	raw, err := ioutil.ReadFile(filepath.Join(pwd, "cloudseed.json"))
+	terminateOnErr(err)
+	err = json.Unmarshal(raw, config)
+	terminateOnErr(err)
+	return config
 }
 
 func terminateOnErr(err error) {
