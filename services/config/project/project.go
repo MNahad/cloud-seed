@@ -1,4 +1,4 @@
-package build
+package project
 
 import (
 	"encoding/json"
@@ -8,45 +8,35 @@ import (
 	"path/filepath"
 
 	"github.com/hashicorp/terraform-cdk-go/cdktf"
-	"github.com/mnahad/cloud-seed/stacks"
 )
 
-var config Config
-
-func Build(env string) (*Config, *cdktf.App) {
-	getConfig()
-	conf := mergeConfig(env)
-	app := cdktf.NewApp(nil)
-	stack := stacks.NewGcpStack(app, conf.Cloud.Gcp.Project, stacks.GcpStackOptions{
-		Project: conf.Cloud.Gcp.Project,
-		Region:  conf.Cloud.Gcp.Region,
-	})
-	switch conf.TfConfig.Backend.Type {
-	case "gcs":
-		cdktf.NewGcsBackend(stack, &conf.TfConfig.Backend.Gcs)
-	case "s3":
-		cdktf.NewS3Backend(stack, &conf.TfConfig.Backend.S3)
-	case "local":
-	default:
-		cdktf.NewLocalBackend(stack, &conf.TfConfig.Backend.Local)
-	}
-	app.Synth()
-	return &config, &app
+type Config struct {
+	cloudConfig
+	tfConfig
+	buildConfig
+	runtimeConfig
 }
 
-func getConfig() {
+type ProjectConfig struct {
+	Default              Config            `json:"default"`
+	EnvironmentOverrides map[string]Config `json:"environmentOverrides"`
+}
+
+func DetectConfig() *ProjectConfig {
+	config := new(ProjectConfig)
 	pwd, err := os.Getwd()
 	terminateOnErr(err)
 	raw, err := ioutil.ReadFile(filepath.Join(pwd, "cloudseed.json"))
 	terminateOnErr(err)
-	err = json.Unmarshal(raw, &config)
+	err = json.Unmarshal(raw, config)
 	terminateOnErr(err)
+	return config
 }
 
-func mergeConfig(env string) *BaseConfig {
-	conf := new(BaseConfig)
+func MergeConfig(config *ProjectConfig, env *string) *Config {
+	conf := new(Config)
 	*conf = config.Default
-	envConf := config.EnvironmentOverrides[env]
+	envConf := config.EnvironmentOverrides[*env]
 	if envConf.Cloud.Gcp.Project != "" {
 		conf.Cloud.Gcp.Project = envConf.Cloud.Gcp.Project
 	}
@@ -150,16 +140,4 @@ type buildConfig struct {
 type runtimeConfig struct {
 	RuntimeEnvironmentVariables map[string]string `json:"runtimeEnvironmentVariables"`
 	SecretVariableNames         []string          `json:"secretVariableNames"`
-}
-
-type BaseConfig struct {
-	cloudConfig
-	tfConfig
-	buildConfig
-	runtimeConfig
-}
-
-type Config struct {
-	Default              BaseConfig            `json:"default"`
-	EnvironmentOverrides map[string]BaseConfig `json:"environmentOverrides"`
 }

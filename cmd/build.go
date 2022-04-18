@@ -12,7 +12,7 @@ var buildCmd = &cobra.Command{
 	Short: "Build the application",
 	Long:  "Package the code and synthesise the infrastructure",
 	Run: func(cmd *cobra.Command, args []string) {
-		build.Build(*env)
+		build.Build(env)
 	},
 }
 
