@@ -7,17 +7,17 @@ type Manifest struct {
 	Modules []Module
 }
 
-func (manifest *Manifest) SortModules(predicates []func(*Module) bool) [][]*Module {
-	sorted := make([][]*Module, len(predicates))
+func (manifest *Manifest) FilterModules(predicates []func(*Module) bool) [][]*Module {
+	filtered := make([][]*Module, len(predicates))
 	for i := range manifest.Modules {
 		module := &manifest.Modules[i]
 		for j := range predicates {
 			if predicates[j](module) {
-				sorted[j] = append(sorted[j], module)
+				filtered[j] = append(filtered[j], module)
 			}
 		}
 	}
-	return sorted
+	return filtered
 }
 
 type Module struct {

@@ -29,7 +29,7 @@ func NewGcpStack(scope *cdktf.App, id string, config GcpStackConfig) cdktf.Terra
 		return m.Service.Function.Gcp != (module.Service{}.Function.Gcp)
 	}}
 	for i := range *config.Manifests {
-		functionModules := (*config.Manifests)[i].SortModules(predicates)[0]
+		functionModules := (*config.Manifests)[i].FilterModules(predicates)[0]
 		functions = append(functions, functionModules...)
 	}
 	for f := range functions {
