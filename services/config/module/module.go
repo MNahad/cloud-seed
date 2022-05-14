@@ -1,16 +1,26 @@
 package module
 
-import "github.com/mnahad/cloud-seed/generated/google"
+import (
+	"encoding/json"
+	"io/fs"
+	"io/ioutil"
+	"path/filepath"
+	"strings"
+
+	"github.com/mnahad/cloud-seed/generated/google"
+	"github.com/mnahad/cloud-seed/generated/google_beta"
+	"github.com/mnahad/cloud-seed/services/config/project"
+)
 
 type Manifest struct {
 	Path    string
 	Modules []Module
 }
 
-func (manifest *Manifest) FilterModules(predicates []func(*Module) bool) [][]*Module {
+func (m *Manifest) FilterModules(predicates []func(*Module) bool) [][]*Module {
 	filtered := make([][]*Module, len(predicates))
-	for i := range manifest.Modules {
-		module := &manifest.Modules[i]
+	for i := range m.Modules {
+		module := &m.Modules[i]
 		for j := range predicates {
 			if predicates[j](module) {
 				filtered[j] = append(filtered[j], module)
@@ -20,76 +30,147 @@ func (manifest *Manifest) FilterModules(predicates []func(*Module) bool) [][]*Mo
 	return filtered
 }
 
+func (m *Manifest) UnmarshalJSON(b []byte) error {
+	type Entrypoints map[string]Module
+	modules := new(Entrypoints)
+	var err error
+	if err = json.Unmarshal(b, modules); err != nil {
+		return err
+	}
+	for k, v := range *modules {
+		if v.Name == "" {
+			v.Name = k
+		}
+		m.Modules = append(m.Modules, v)
+	}
+	return err
+}
+
+func DetectManifests(config *project.Config) []Manifest {
+	manifests := make([]Manifest, 0)
+	filepath.WalkDir(config.BuildConfig.Dir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !d.IsDir() && strings.HasSuffix(d.Name(), ".cloudseed.json") {
+			raw, err := ioutil.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			manifest := new(Manifest)
+			err = json.Unmarshal(raw, manifest)
+			if err != nil {
+				return err
+			}
+			manifests = append(manifests, *manifest)
+			return err
+		}
+		return nil
+	})
+	return manifests
+}
+
 type Module struct {
-	Name          string
-	EventSources  []EventSource
-	Service       Service
-	Networking    Networking
-	Security      Security
-	Orchestration Orchestration
+	Name          string        `json:"name"`
+	EventSource   EventSource   `json:"eventSource"`
+	Service       Service       `json:"service"`
+	Networking    Networking    `json:"networking"`
+	Security      Security      `json:"security"`
+	Orchestration Orchestration `json:"orchestration"`
+	Metadata      Metadata      `json:"metadata"`
 }
 
 type EventSource struct {
-	Kind      string
 	EventSpec struct {
-		Topic    string
-		Resource string
+		Gcp google.PubsubTopicConfig
+		Aws any
 	}
 	QueueSpec struct {
-		Name string
+		Gcp google.CloudTasksQueueConfig
+		Aws any
 	}
 	ScheduleSpec struct {
-		Schedule string
+		Gcp google.CloudSchedulerJobConfig
+		Aws any
 	}
+}
+
+func (c *EventSource) UnmarshalJSON(b []byte) error {
+	type source struct {
+		Kind    string          `json:"kind"`
+		GcpSpec json.RawMessage `json:"gcp"`
+		AwsSpec json.RawMessage `json:"aws"`
+	}
+	s := new(source)
+	var err error
+	if err = json.Unmarshal(b, s); err != nil {
+		return err
+	}
+	switch s.Kind {
+	case "event":
+		if err == nil && s.GcpSpec != nil {
+			err = json.Unmarshal(s.GcpSpec, &c.EventSpec.Gcp)
+		}
+		if err == nil && s.AwsSpec != nil {
+			err = json.Unmarshal(s.AwsSpec, &c.EventSpec.Aws)
+		}
+	case "queue":
+		if err == nil && s.GcpSpec != nil {
+			err = json.Unmarshal(s.GcpSpec, &c.QueueSpec.Gcp)
+		}
+		if err == nil && s.AwsSpec != nil {
+			err = json.Unmarshal(s.AwsSpec, &c.QueueSpec.Aws)
+		}
+	case "schedule":
+		if err == nil && s.GcpSpec != nil {
+			err = json.Unmarshal(s.GcpSpec, &c.ScheduleSpec.Gcp)
+		}
+		if err == nil && s.AwsSpec != nil {
+			err = json.Unmarshal(s.AwsSpec, &c.ScheduleSpec.Aws)
+		}
+	case "http":
+	default:
+	}
+	return err
 }
 
 type Service struct {
 	Function struct {
-		Gcp struct {
-			Trigger struct {
-				RetryOnFailure bool
-			}
-			Config google.CloudfunctionsFunctionConfig
-		}
-		Aws struct {
-			Trigger struct {
-				NumberOfRetries uint8
-			}
-			Config any
-		}
-	}
+		Gcp google_beta.GoogleCloudfunctions2FunctionConfig `json:"gcp"`
+		Aws any                                             `json:"aws"`
+	} `json:"function"`
 	Container struct {
-		Gcp struct {
-			Config google.CloudRunServiceConfig
-		}
-		Aws struct {
-			Config any
-		}
-	}
+		Gcp google.CloudRunServiceConfig `json:"gcp"`
+		Aws any                          `json:"aws"`
+	} `json:"container"`
 }
 
 type Networking struct {
-	Internal bool
+	Internal bool `json:"internal"`
 	Ingress  struct {
 		Gateway []struct {
-			Path       string
+			Path       string `json:"path"`
 			Operations []struct {
-				Verb      string
+				Verb      string `json:"verb"`
 				Responses []struct {
-					Code string
-				}
-			}
-		}
-	}
+					Code string `json:"code"`
+				} `json:"responses"`
+			} `json:"operations"`
+		} `json:"gateway"`
+	} `json:"ingress"`
 	Egress struct {
-		StaticIp bool
-	}
+		StaticIp bool `json:"staticIp"`
+	} `json:"egress"`
 }
 
 type Security struct {
-	Authentication bool
+	Authentication bool `json:"authentication"`
 }
 
 type Orchestration struct {
-	Workflow any
+	Workflow any `json:"workflow"`
+}
+
+type Metadata struct {
+	Metadata map[string]string `json:"metadata"`
 }

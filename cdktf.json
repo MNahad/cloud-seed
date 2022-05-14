@@ -4,8 +4,8 @@
   "codeMakerOutput": "generated",
   "terraformProviders": [
     "google@~>4.15.0",
-    "aws@~>4.8.0",
-    "archive@~>2.2.0"
+    "google-beta@~>4.15.0",
+    "aws@~>4.8.0"
   ],
   "terraformModules": [],
   "context": {

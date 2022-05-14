@@ -4,36 +4,107 @@ import (
 	"github.com/aws/jsii-runtime-go"
 	"github.com/hashicorp/terraform-cdk-go/cdktf"
 	"github.com/mnahad/cloud-seed/generated/google"
+	"github.com/mnahad/cloud-seed/generated/google_beta"
 	"github.com/mnahad/cloud-seed/services/config/module"
+	"github.com/mnahad/cloud-seed/services/config/project"
 )
 
 type GcpStackConfig struct {
-	Environment                 *string
-	Project                     *string
-	Region                      *string
-	Dir                         *string
-	OutDir                      *string
-	RuntimeEnvironmentVariables *map[string]string
-	SecretVariableNames         *[]string
-	Manifests                   *[]module.Manifest
+	Environment *string
+	Options     *project.Config
+	Manifests   *[]module.Manifest
 }
 
 func NewGcpStack(scope *cdktf.App, id string, config GcpStackConfig) cdktf.TerraformStack {
+	support := supportInfrastructure{}
 	stack := cdktf.NewTerraformStack(*scope, &id)
 	google.NewGoogleProvider(stack, jsii.String("Google"), &google.GoogleProviderConfig{
-		Zone:    config.Region,
-		Project: config.Project,
+		Project: &config.Options.Cloud.Gcp.Project,
+		Zone:    &config.Options.Cloud.Gcp.Region,
 	})
-	var functions []*module.Module
+	google_beta.NewGoogleBetaProvider(stack, jsii.String("GoogleBeta"), &google_beta.GoogleBetaProviderConfig{
+		Project: &config.Options.Cloud.Gcp.Project,
+		Zone:    &config.Options.Cloud.Gcp.Region,
+	})
+	if len(*config.Manifests) > 0 {
+		support.generateInfrastructure(&stack, kindCommon, config.Options)
+	}
 	predicates := []func(*module.Module) bool{func(m *module.Module) bool {
 		return m.Service.Function.Gcp != (module.Service{}.Function.Gcp)
 	}}
 	for i := range *config.Manifests {
-		functionModules := (*config.Manifests)[i].FilterModules(predicates)[0]
-		functions = append(functions, functionModules...)
-	}
-	for f := range functions {
-		NewFunction(&stack, functions[f])
+		manifest := &(*config.Manifests)[i]
+		functionModules := manifest.FilterModules(predicates)[0]
+		if support.function == (supportInfrastructure{}.function) && len(functionModules) > 0 {
+			support.generateInfrastructure(&stack, kindFunction, config.Options)
+		}
+		for j := range functionModules {
+			functionModule := functionModules[j]
+			function := newFunction(&stack, functionModule, &support, manifest, config.Options)
+			if functionModule.EventSource.EventSpec != (module.EventSource{}.EventSpec) {
+				eventTopic := newTopicEventSource(&stack, &functionModule.EventSource)
+				if triggerTopic := (*function).EventTriggerInput().PubsubTopic; triggerTopic == nil {
+					triggerTopic = (*eventTopic).Id()
+				}
+				if triggerEventType := (*function).EventTriggerInput().EventType; triggerEventType == nil {
+					triggerEventType = jsii.String("google.cloud.pubsub.topic.v1.messagePublished")
+				}
+			} else if functionModule.EventSource.QueueSpec != (module.EventSource{}.QueueSpec) {
+				newQueueEventSource(&stack, &functionModule.EventSource, config.Options)
+			} else if functionModule.EventSource.ScheduleSpec != (module.EventSource{}.ScheduleSpec) {
+				schedule := newScheduleEventSource(&stack, &functionModule.EventSource)
+				if targetUri := (*schedule).HttpTargetInput().Uri; targetUri == nil {
+					targetUri = (*function).ServiceConfig().GcfUri()
+				}
+			}
+		}
 	}
 	return stack
+}
+
+type supportInfrastructure struct {
+	common struct {
+		secrets []*google.SecretManagerSecret
+	}
+	function struct {
+		archiveBucket *google.StorageBucket
+	}
+	container any
+}
+
+type supportInfrastructureKind uint
+
+const (
+	kindCommon supportInfrastructureKind = iota
+	kindFunction
+	kindContainer
+)
+
+func (s *supportInfrastructure) generateInfrastructure(
+	scope *cdktf.TerraformStack,
+	kind supportInfrastructureKind,
+	options *project.Config,
+) {
+	switch kind {
+	case kindCommon:
+		secrets := make([]*google.SecretManagerSecret, len(options.EnvironmentConfig.SecretVariableNames))
+		for i := range options.EnvironmentConfig.SecretVariableNames {
+			name := &options.EnvironmentConfig.SecretVariableNames[i]
+			secret := google.NewSecretManagerSecret(*scope, name, &google.SecretManagerSecretConfig{
+				SecretId: name,
+				Replication: &google.SecretManagerSecretReplication{
+					Automatic: true,
+				},
+			})
+			secrets[i] = &secret
+		}
+		s.common.secrets = append(s.common.secrets, secrets...)
+	case kindFunction:
+		archiveBucket := google.NewStorageBucket(*scope, jsii.String("ArchiveBucket"), &google.StorageBucketConfig{
+			Name:     jsii.String(options.Cloud.Gcp.Project + "-functions"),
+			Location: &options.Cloud.Gcp.Region,
+		})
+		s.function.archiveBucket = &archiveBucket
+	case kindContainer:
+	}
 }

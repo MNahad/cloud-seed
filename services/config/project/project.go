@@ -8,70 +8,40 @@ import (
 	"path/filepath"
 
 	"github.com/hashicorp/terraform-cdk-go/cdktf"
+	"github.com/mnahad/cloud-seed/generated/google"
 )
 
 type Config struct {
 	cloudConfig
 	tfConfig
 	buildConfig
-	runtimeConfig
+	environmentConfig
+	metadata
 }
 
-type ProjectConfig struct {
+type ConfigFile struct {
 	Default              Config            `json:"default"`
 	EnvironmentOverrides map[string]Config `json:"environmentOverrides"`
 }
 
-func (projectConfig *ProjectConfig) MergeConfig(env *string) Config {
+func (projectConfig *ConfigFile) MergeConfig(env *string) Config {
 	conf := new(Config)
 	*conf = projectConfig.Default
 	envConf := projectConfig.EnvironmentOverrides[*env]
-	if envConf.Cloud.Gcp.Project != "" {
-		conf.Cloud.Gcp.Project = envConf.Cloud.Gcp.Project
-	}
-	if envConf.Cloud.Gcp.Region != "" {
-		conf.Cloud.Gcp.Region = envConf.Cloud.Gcp.Region
-	}
-	if envConf.TfConfig.Backend.Type != "" {
-		conf.TfConfig.Backend.Type = envConf.TfConfig.Backend.Type
-	}
-	if envConf.TfConfig.Backend.Gcs != (cdktf.GcsBackendProps{}) {
-		conf.TfConfig.Backend.Gcs = envConf.TfConfig.Backend.Gcs
-	}
-	if envConf.TfConfig.Backend.S3 != (cdktf.S3BackendProps{}) {
-		conf.TfConfig.Backend.S3 = envConf.TfConfig.Backend.S3
-	}
-	if envConf.TfConfig.Backend.Local != (cdktf.LocalBackendProps{}) {
-		conf.TfConfig.Backend.Local = envConf.TfConfig.Backend.Local
-	}
-	if envConf.TfConfig.Cdktf != "" {
-		conf.TfConfig.Cdktf = envConf.TfConfig.Cdktf
-	}
-	if envConf.BuildConfig.Dir != "" {
-		conf.BuildConfig.Dir = envConf.BuildConfig.Dir
-	}
-	if envConf.BuildConfig.OutDir != "" {
-		conf.BuildConfig.OutDir = envConf.BuildConfig.OutDir
-	}
-	if conf.RuntimeEnvironmentVariables == nil {
-		conf.RuntimeEnvironmentVariables = make(map[string]string)
-	}
-	for k, v := range envConf.RuntimeEnvironmentVariables {
-		conf.RuntimeEnvironmentVariables[k] = v
-	}
-	if conf.SecretVariableNames == nil {
-		conf.SecretVariableNames = make([]string, 0)
-	}
-	conf.SecretVariableNames = append(conf.SecretVariableNames, envConf.SecretVariableNames...)
+	conf.cloudConfig.merge(&envConf.cloudConfig)
+	conf.tfConfig.merge(&envConf.tfConfig)
+	conf.buildConfig.merge(&envConf.buildConfig)
+	conf.environmentConfig.merge(&envConf.environmentConfig)
+	conf.metadata.merge(&envConf.metadata)
 	return *conf
 }
 
-func DetectConfig() *ProjectConfig {
-	config := new(ProjectConfig)
+func DetectConfig() *ConfigFile {
 	pwd, err := os.Getwd()
 	terminateOnErr(err)
 	raw, err := ioutil.ReadFile(filepath.Join(pwd, "cloudseed.json"))
 	terminateOnErr(err)
+	config := new(ConfigFile)
 	err = json.Unmarshal(raw, config)
 	terminateOnErr(err)
 	return config
@@ -87,10 +57,25 @@ func terminateOnErr(err error) {
 type cloudConfig struct {
 	Cloud struct {
 		Gcp struct {
-			Project string `json:"project"`
-			Region  string `json:"region"`
+			Project           string `json:"project"`
+			Region            string `json:"region"`
+			SourceCodeStorage struct {
+				Bucket google.StorageBucketConfig `json:"bucket"`
+			} `json:"sourceCodeStorage"`
 		} `json:"gcp"`
 	} `json:"cloud"`
+}
+
+func (c *cloudConfig) merge(other *cloudConfig) {
+	if other.Cloud.Gcp.Project != "" {
+		c.Cloud.Gcp.Project = other.Cloud.Gcp.Project
+	}
+	if other.Cloud.Gcp.Region != "" {
+		c.Cloud.Gcp.Region = other.Cloud.Gcp.Region
+	}
+	if other.Cloud.Gcp.SourceCodeStorage.Bucket != (google.StorageBucketConfig{}) {
+		c.Cloud.Gcp.SourceCodeStorage.Bucket = other.Cloud.Gcp.SourceCodeStorage.Bucket
+	}
 }
 
 type tfConfig struct {
@@ -100,32 +85,45 @@ type tfConfig struct {
 	} `json:"tfConfig"`
 }
 
+func (c *tfConfig) merge(other *tfConfig) {
+	if other.TfConfig.Backend.Gcs != (cdktf.GcsBackendProps{}) {
+		c.TfConfig.Backend.Gcs = other.TfConfig.Backend.Gcs
+	}
+	if other.TfConfig.Backend.S3 != (cdktf.S3BackendProps{}) {
+		c.TfConfig.Backend.S3 = other.TfConfig.Backend.S3
+	}
+	if other.TfConfig.Backend.Local != (cdktf.LocalBackendProps{}) {
+		c.TfConfig.Backend.Local = other.TfConfig.Backend.Local
+	}
+	if other.TfConfig.Cdktf != "" {
+		c.TfConfig.Cdktf = other.TfConfig.Cdktf
+	}
+}
+
 type tfBackendConfig struct {
-	Type  string
 	Gcs   cdktf.GcsBackendProps
 	S3    cdktf.S3BackendProps
 	Local cdktf.LocalBackendProps
 }
 
 func (c *tfBackendConfig) UnmarshalJSON(b []byte) error {
-	type S struct {
+	type opts struct {
 		Type    string          `json:"type"`
 		Options json.RawMessage `json:"options"`
 	}
-	s := new(S)
+	o := new(opts)
 	var err error
-	if err = json.Unmarshal(b, s); err != nil {
+	if err = json.Unmarshal(b, o); err != nil {
 		return err
 	}
-	c.Type = s.Type
-	switch s.Type {
+	switch o.Type {
 	case "gcs":
-		err = json.Unmarshal(s.Options, &c.Gcs)
+		err = json.Unmarshal(o.Options, &c.Gcs)
 	case "s3":
-		err = json.Unmarshal(s.Options, &c.S3)
+		err = json.Unmarshal(o.Options, &c.S3)
 	case "local":
 	default:
-		err = json.Unmarshal(s.Options, &c.Local)
+		err = json.Unmarshal(o.Options, &c.Local)
 	}
 	return err
 }
@@ -137,7 +135,47 @@ type buildConfig struct {
 	} `json:"buildConfig"`
 }
 
-type runtimeConfig struct {
-	RuntimeEnvironmentVariables map[string]string `json:"runtimeEnvironmentVariables"`
-	SecretVariableNames         []string          `json:"secretVariableNames"`
+func (c *buildConfig) merge(other *buildConfig) {
+	if other.BuildConfig.Dir != "" {
+		c.BuildConfig.Dir = other.BuildConfig.Dir
+	}
+	if other.BuildConfig.OutDir != "" {
+		c.BuildConfig.OutDir = other.BuildConfig.OutDir
+	}
+}
+
+type environmentConfig struct {
+	EnvironmentConfig struct {
+		RuntimeEnvironmentVariables map[string]string `json:"runtimeEnvironmentVariables"`
+		SecretVariableNames         []string          `json:"secretVariableNames"`
+	} `json:"environmentConfig"`
+}
+
+func (c *environmentConfig) merge(other *environmentConfig) {
+	if c.EnvironmentConfig.RuntimeEnvironmentVariables == nil {
+		c.EnvironmentConfig.RuntimeEnvironmentVariables = make(map[string]string)
+	}
+	for k, v := range other.EnvironmentConfig.RuntimeEnvironmentVariables {
+		c.EnvironmentConfig.RuntimeEnvironmentVariables[k] = v
+	}
+	if c.EnvironmentConfig.SecretVariableNames == nil {
+		c.EnvironmentConfig.SecretVariableNames = make([]string, 0)
+	}
+	if other.EnvironmentConfig.SecretVariableNames != nil {
+		c.EnvironmentConfig.SecretVariableNames =
+			append(c.EnvironmentConfig.SecretVariableNames, other.EnvironmentConfig.SecretVariableNames...)
+	}
+}
+
+type metadata struct {
+	Metadata map[string]string `json:"metadata"`
+}
+
+func (c *metadata) merge(other *metadata) {
+	if c.Metadata == nil {
+		c.Metadata = make(map[string]string)
+	}
+	for k, v := range other.Metadata {
+		c.Metadata[k] = v
+	}
 }
