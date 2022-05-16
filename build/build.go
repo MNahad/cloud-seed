@@ -1,6 +1,8 @@
 package build
 
 import (
+	"os"
+
 	"github.com/hashicorp/terraform-cdk-go/cdktf"
 	"github.com/mnahad/cloud-seed/services/config/module"
 	"github.com/mnahad/cloud-seed/services/config/project"
@@ -8,9 +10,16 @@ import (
 )
 
 func Build(env *string) (*project.Config, *cdktf.App) {
-	conf := project.DetectConfig().MergeConfig(env)
+	projectConf, err := project.DetectConfig()
+	if err != nil {
+		os.Exit(1)
+	}
+	conf := projectConf.MergeConfig(env)
 	app := cdktf.NewApp(&cdktf.AppOptions{Outdir: &conf.BuildConfig.OutDir})
-	manifests := module.DetectManifests(&conf)
+	manifests, err := module.DetectManifests(&conf)
+	if err != nil {
+		os.Exit(1)
+	}
 	stackbuilder.NewStack(&app, "CloudSeed", env, &manifests, &conf)
 	app.Synth()
 	return &conf, &app

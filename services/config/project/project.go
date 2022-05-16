@@ -2,7 +2,6 @@ package project
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -36,22 +35,21 @@ func (projectConfig *ConfigFile) MergeConfig(env *string) Config {
 	return *conf
 }
 
-func DetectConfig() *ConfigFile {
+func DetectConfig() (*ConfigFile, error) {
 	pwd, err := os.Getwd()
-	terminateOnErr(err)
+	if err != nil {
+		return nil, err
+	}
 	raw, err := ioutil.ReadFile(filepath.Join(pwd, "cloudseed.json"))
-	terminateOnErr(err)
+	if err != nil {
+		return nil, err
+	}
 	config := new(ConfigFile)
 	err = json.Unmarshal(raw, config)
-	terminateOnErr(err)
-	return config
-}
-
-func terminateOnErr(err error) {
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		return nil, err
 	}
+	return config, nil
 }
 
 type cloudConfig struct {

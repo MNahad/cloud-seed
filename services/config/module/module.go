@@ -46,9 +46,9 @@ func (m *Manifest) UnmarshalJSON(b []byte) error {
 	return err
 }
 
-func DetectManifests(config *project.Config) []Manifest {
+func DetectManifests(config *project.Config) ([]Manifest, error) {
 	manifests := make([]Manifest, 0)
-	filepath.WalkDir(config.BuildConfig.Dir, func(path string, d fs.DirEntry, err error) error {
+	err := filepath.WalkDir(config.BuildConfig.Dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -62,12 +62,13 @@ func DetectManifests(config *project.Config) []Manifest {
 			if err != nil {
 				return err
 			}
+			manifest.Path = path
 			manifests = append(manifests, *manifest)
 			return err
 		}
 		return nil
 	})
-	return manifests
+	return manifests, err
 }
 
 type Module struct {
