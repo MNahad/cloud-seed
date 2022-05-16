@@ -40,27 +40,47 @@ func NewGcpStack(scope *cdktf.App, id string, config GcpStackConfig) cdktf.Terra
 		}
 		for j := range functionModules {
 			functionModule := functionModules[j]
-			function := newFunction(&stack, functionModule, &support, manifest, config.Options)
+			function := *newFunction(&stack, functionModule, &support, manifest, config.Options)
 			if functionModule.EventSource.EventSpec != (module.EventSource{}.EventSpec) {
-				eventTopic := newTopicEventSource(&stack, &functionModule.EventSource)
-				if triggerTopic := (*function).EventTriggerInput().PubsubTopic; triggerTopic == nil {
-					triggerTopic = (*eventTopic).Id()
+				eventTopic := *newTopicEventSource(&stack, &functionModule.EventSource)
+				if function.EventTriggerInput() == nil {
+					function.PutEventTrigger(&google_beta.GoogleCloudfunctions2FunctionEventTrigger{})
 				}
-				if triggerEventType := (*function).EventTriggerInput().EventType; triggerEventType == nil {
-					triggerEventType = jsii.String("google.cloud.pubsub.topic.v1.messagePublished")
+				if function.EventTriggerInput().PubsubTopic == nil {
+					eventTrigger := function.EventTriggerInput()
+					eventTrigger.PubsubTopic = eventTopic.Id()
+					function.PutEventTrigger(eventTrigger)
+				}
+				if function.EventTriggerInput().EventType == nil {
+					eventTrigger := function.EventTriggerInput()
+					eventTrigger.EventType = jsii.String("google.cloud.pubsub.topic.v1.messagePublished")
+					function.PutEventTrigger(eventTrigger)
 				}
 			} else if functionModule.EventSource.QueueSpec != (module.EventSource{}.QueueSpec) {
 				newQueueEventSource(&stack, &functionModule.EventSource, config.Options)
 			} else if functionModule.EventSource.ScheduleSpec != (module.EventSource{}.ScheduleSpec) {
-				schedule := newScheduleEventSource(&stack, &functionModule.EventSource)
-				if targetUri := (*schedule).HttpTargetInput().Uri; targetUri == nil {
-					targetUri = (*function).ServiceConfig().GcfUri()
+				schedule := *newScheduleEventSource(&stack, &functionModule.EventSource)
+				if schedule.HttpTargetInput() == nil {
+					schedule.PutHttpTarget(&google.CloudSchedulerJobHttpTarget{Uri: function.ServiceConfig().GcfUri()})
+				}
+				if schedule.HttpTargetInput().Uri == nil {
+					httpTarget := schedule.HttpTargetInput()
+					httpTarget.Uri = function.ServiceConfig().GcfUri()
+					schedule.PutHttpTarget(httpTarget)
 				}
 			}
 		}
 	}
 	return stack
 }
+
+type resourceKind uint
+
+const (
+	kindCommon resourceKind = iota
+	kindFunction
+	kindContainer
+)
 
 type supportInfrastructure struct {
 	common struct {
@@ -72,17 +92,9 @@ type supportInfrastructure struct {
 	container any
 }
 
-type supportInfrastructureKind uint
-
-const (
-	kindCommon supportInfrastructureKind = iota
-	kindFunction
-	kindContainer
-)
-
 func (s *supportInfrastructure) generateInfrastructure(
 	scope *cdktf.TerraformStack,
-	kind supportInfrastructureKind,
+	kind resourceKind,
 	options *project.Config,
 ) {
 	switch kind {
