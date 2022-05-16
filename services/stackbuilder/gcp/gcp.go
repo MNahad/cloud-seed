@@ -69,6 +69,9 @@ func NewGcpStack(scope *cdktf.App, id string, config GcpStackConfig) cdktf.Terra
 					schedule.PutHttpTarget(httpTarget)
 				}
 			}
+			if !functionModule.Security.Authentication {
+				newAllUsersCloudFunctionInvoker(&stack, functionModule.Name)
+			}
 		}
 	}
 	return stack
