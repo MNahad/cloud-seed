@@ -165,7 +165,7 @@ type Networking struct {
 }
 
 type Security struct {
-	Authentication bool `json:"authentication"`
+	NoAuthentication bool `json:"noAuthentication"`
 }
 
 type Orchestration struct {
