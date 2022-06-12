@@ -72,6 +72,16 @@ func NewGcpStack(scope *cdktf.App, id string, config GcpStackConfig) cdktf.Terra
 			if functionModule.Security.NoAuthentication {
 				newAllUsersCloudFunctionInvoker(&stack, functionModule.Name)
 			}
+			if functionModule.Networking.Internal {
+				serviceConfig := function.ServiceConfigInput()
+				if serviceConfig == nil {
+					serviceConfig = &google_beta.GoogleCloudfunctions2FunctionServiceConfig{}
+				}
+				if serviceConfig.IngressSettings == nil {
+					serviceConfig.IngressSettings = jsii.String("ALLOW_INTERNAL_ONLY")
+					function.PutServiceConfig(serviceConfig)
+				}
+			}
 		}
 	}
 	return stack
