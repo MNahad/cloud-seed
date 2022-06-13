@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	build "github.com/mnahad/cloud-seed/build"
+	"github.com/mnahad/cloud-seed/build"
 	"github.com/spf13/cobra"
 )
 
@@ -17,6 +17,6 @@ var buildCmd = &cobra.Command{
 }
 
 func init() {
-	env = buildCmd.Flags().String("env", "", "Set the environment")
-	buildCmd.MarkFlagRequired("env")
+	env = buildCmd.Flags().String("environment", "", "Set the environment")
+	buildCmd.MarkFlagRequired("environment")
 }
