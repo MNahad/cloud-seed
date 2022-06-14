@@ -3,7 +3,7 @@ package module
 import (
 	"encoding/json"
 	"io/fs"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -53,7 +53,7 @@ func DetectManifests(config *project.Config) ([]Manifest, error) {
 			return err
 		}
 		if !d.IsDir() && strings.HasSuffix(d.Name(), ".cloudseed.json") {
-			raw, err := ioutil.ReadFile(path)
+			raw, err := os.ReadFile(path)
 			if err != nil {
 				return err
 			}
@@ -109,27 +109,34 @@ func (c *EventSource) UnmarshalJSON(b []byte) error {
 	}
 	switch s.Kind {
 	case "event":
-		if err == nil && s.GcpSpec != nil {
-			err = json.Unmarshal(s.GcpSpec, &c.EventSpec.Gcp)
-		}
-		if err == nil && s.AwsSpec != nil {
-			err = json.Unmarshal(s.AwsSpec, &c.EventSpec.Aws)
+		{
+			if err == nil && s.GcpSpec != nil {
+				err = json.Unmarshal(s.GcpSpec, &c.EventSpec.Gcp)
+			}
+			if err == nil && s.AwsSpec != nil {
+				err = json.Unmarshal(s.AwsSpec, &c.EventSpec.Aws)
+			}
 		}
 	case "queue":
-		if err == nil && s.GcpSpec != nil {
-			err = json.Unmarshal(s.GcpSpec, &c.QueueSpec.Gcp)
-		}
-		if err == nil && s.AwsSpec != nil {
-			err = json.Unmarshal(s.AwsSpec, &c.QueueSpec.Aws)
+		{
+			if err == nil && s.GcpSpec != nil {
+				err = json.Unmarshal(s.GcpSpec, &c.QueueSpec.Gcp)
+			}
+			if err == nil && s.AwsSpec != nil {
+				err = json.Unmarshal(s.AwsSpec, &c.QueueSpec.Aws)
+			}
 		}
 	case "schedule":
-		if err == nil && s.GcpSpec != nil {
-			err = json.Unmarshal(s.GcpSpec, &c.ScheduleSpec.Gcp)
-		}
-		if err == nil && s.AwsSpec != nil {
-			err = json.Unmarshal(s.AwsSpec, &c.ScheduleSpec.Aws)
+		{
+			if err == nil && s.GcpSpec != nil {
+				err = json.Unmarshal(s.GcpSpec, &c.ScheduleSpec.Gcp)
+			}
+			if err == nil && s.AwsSpec != nil {
+				err = json.Unmarshal(s.AwsSpec, &c.ScheduleSpec.Aws)
+			}
 		}
 	case "http":
+		fallthrough
 	default:
 	}
 	return err

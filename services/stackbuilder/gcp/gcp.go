@@ -29,9 +29,11 @@ func NewGcpStack(scope *cdktf.App, id string, config GcpStackConfig) cdktf.Terra
 	if len(*config.Manifests) > 0 {
 		support.generateInfrastructure(&stack, kindCommon, config.Options)
 	}
-	predicates := []func(*module.Module) bool{func(m *module.Module) bool {
-		return m.Service.Function.Gcp != (module.Service{}.Function.Gcp)
-	}}
+	predicates := []func(*module.Module) bool{
+		func(m *module.Module) bool {
+			return m.Service.Function.Gcp != (module.Service{}.Function.Gcp)
+		},
+	}
 	for i := range *config.Manifests {
 		manifest := &(*config.Manifests)[i]
 		functionModules := manifest.FilterModules(predicates)[0]
@@ -112,24 +114,28 @@ func (s *supportInfrastructure) generateInfrastructure(
 ) {
 	switch kind {
 	case kindCommon:
-		secrets := make([]*google.SecretManagerSecret, len(options.EnvironmentConfig.SecretVariableNames))
-		for i := range options.EnvironmentConfig.SecretVariableNames {
-			name := &options.EnvironmentConfig.SecretVariableNames[i]
-			secret := google.NewSecretManagerSecret(*scope, name, &google.SecretManagerSecretConfig{
-				SecretId: name,
-				Replication: &google.SecretManagerSecretReplication{
-					Automatic: true,
-				},
-			})
-			secrets[i] = &secret
+		{
+			secrets := make([]*google.SecretManagerSecret, len(options.EnvironmentConfig.SecretVariableNames))
+			for i := range options.EnvironmentConfig.SecretVariableNames {
+				name := &options.EnvironmentConfig.SecretVariableNames[i]
+				secret := google.NewSecretManagerSecret(*scope, name, &google.SecretManagerSecretConfig{
+					SecretId: name,
+					Replication: &google.SecretManagerSecretReplication{
+						Automatic: true,
+					},
+				})
+				secrets[i] = &secret
+			}
+			s.common.secrets = append(s.common.secrets, secrets...)
 		}
-		s.common.secrets = append(s.common.secrets, secrets...)
 	case kindFunction:
-		archiveBucket := google.NewStorageBucket(*scope, jsii.String("ArchiveBucket"), &google.StorageBucketConfig{
-			Name:     jsii.String(options.Cloud.Gcp.Project + "-functions"),
-			Location: &options.Cloud.Gcp.Region,
-		})
-		s.function.archiveBucket = &archiveBucket
+		{
+			archiveBucket := google.NewStorageBucket(*scope, jsii.String("ArchiveBucket"), &google.StorageBucketConfig{
+				Name:     jsii.String(options.Cloud.Gcp.Project + "-functions"),
+				Location: &options.Cloud.Gcp.Region,
+			})
+			s.function.archiveBucket = &archiveBucket
+		}
 	case kindContainer:
 	}
 }

@@ -2,7 +2,6 @@ package project
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -40,7 +39,7 @@ func DetectConfig() (*ConfigFile, error) {
 	if err != nil {
 		return nil, err
 	}
-	raw, err := ioutil.ReadFile(filepath.Join(pwd, "cloudseed.json"))
+	raw, err := os.ReadFile(filepath.Join(pwd, "cloudseed.json"))
 	if err != nil {
 		return nil, err
 	}
@@ -120,6 +119,7 @@ func (c *tfBackendConfig) UnmarshalJSON(b []byte) error {
 	case "s3":
 		err = json.Unmarshal(o.Options, &c.S3)
 	case "local":
+		fallthrough
 	default:
 		err = json.Unmarshal(o.Options, &c.Local)
 	}

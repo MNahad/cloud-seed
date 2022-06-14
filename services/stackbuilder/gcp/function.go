@@ -1,10 +1,13 @@
 package gcp
 
 import (
+	"path/filepath"
+
 	"github.com/aws/jsii-runtime-go"
 	"github.com/hashicorp/terraform-cdk-go/cdktf"
 	"github.com/mnahad/cloud-seed/generated/google"
 	"github.com/mnahad/cloud-seed/generated/google_beta"
+	gcpArtefactGenerator "github.com/mnahad/cloud-seed/services/artefactgenerator/gcp"
 	"github.com/mnahad/cloud-seed/services/config/module"
 	"github.com/mnahad/cloud-seed/services/config/project"
 )
@@ -16,13 +19,19 @@ func newFunction(
 	manifest *module.Manifest,
 	options *project.Config,
 ) *google_beta.GoogleCloudfunctions2Function {
+	archivePath, _ := filepath.Abs(filepath.Join(
+		options.BuildConfig.OutDir,
+		gcpArtefactGenerator.GetArtefactPrefix(gcpArtefactGenerator.FunctionArtefact),
+		config.Name,
+	) + ".zip")
+
 	archiveObject := google.NewStorageBucketObject(
 		*scope,
-		jsii.String(config.Name+"SourceArchive"),
+		jsii.String(config.Name+"-sourceArchive"),
 		&google.StorageBucketObjectConfig{
 			Bucket: (*supportInfrastructure.function.archiveBucket).Name(),
-			Name:   jsii.String(config.Name + "Source"),
-			Source: &manifest.Path,
+			Name:   jsii.String(config.Name + "-source"),
+			Source: &archivePath,
 		},
 	)
 	functionConfig := new(google_beta.GoogleCloudfunctions2FunctionConfig)
