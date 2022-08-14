@@ -35,7 +35,11 @@ func Archive(archivePath, sourceDir string) error {
 			return err
 		}
 		defer r.Close()
-		w, err := writer.Create(path)
+		writePath, err := filepath.Rel(sourceDir, path)
+		if err != nil {
+			return err
+		}
+		w, err := writer.Create(writePath)
 		if err != nil {
 			return err
 		}
