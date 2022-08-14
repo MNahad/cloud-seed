@@ -104,6 +104,9 @@ type tfBackendConfig struct {
 }
 
 func (c *tfBackendConfig) UnmarshalJSON(b []byte) error {
+	if b == nil {
+		return nil
+	}
 	type opts struct {
 		Type    string          `json:"type"`
 		Options json.RawMessage `json:"options"`
@@ -111,6 +114,9 @@ func (c *tfBackendConfig) UnmarshalJSON(b []byte) error {
 	o := new(opts)
 	var err error
 	if err = json.Unmarshal(b, o); err != nil {
+		return err
+	}
+	if o.Options == nil {
 		return err
 	}
 	switch o.Type {

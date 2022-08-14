@@ -31,6 +31,9 @@ func (m *Manifest) FilterModules(predicates []func(*Module) bool) [][]*Module {
 }
 
 func (m *Manifest) UnmarshalJSON(b []byte) error {
+	if b == nil {
+		return nil
+	}
 	type Entrypoints map[string]Module
 	modules := new(Entrypoints)
 	var err error
@@ -97,6 +100,9 @@ type EventSource struct {
 }
 
 func (c *EventSource) UnmarshalJSON(b []byte) error {
+	if b == nil {
+		return nil
+	}
 	type source struct {
 		Kind    string          `json:"kind"`
 		GcpSpec json.RawMessage `json:"gcp"`
