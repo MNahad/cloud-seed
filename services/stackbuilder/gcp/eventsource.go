@@ -14,6 +14,8 @@ var eventSourceTopics = make(map[string]*google.PubsubTopic, 0)
 var eventSourceQueues = make(map[string]*google.CloudTasksQueue, 0)
 var eventSourceSchedulesCount int
 
+const cloudSchedulerPlaceholderHttpTargetUri = "http://example.com/cloud-seed"
+
 func newTopicEventSource(scope *cdktf.TerraformStack, eventSource *module.EventSource) *google.PubsubTopic {
 	name := *eventSource.EventSpec.Gcp.Name
 	if eventSourceTopics[name] == nil {
@@ -39,10 +41,22 @@ func newQueueEventSource(
 	return eventSourceQueues[name]
 }
 
-func newScheduleEventSource(scope *cdktf.TerraformStack, eventSource *module.EventSource) *google.CloudSchedulerJob {
+func newScheduleEventSource(
+	scope *cdktf.TerraformStack,
+	eventSource *module.EventSource,
+	options *project.Config,
+) *google.CloudSchedulerJob {
 	if eventSource.ScheduleSpec.Gcp.Name == nil {
 		eventSource.ScheduleSpec.Gcp.Name = jsii.String("Scheduler" + strconv.Itoa(eventSourceSchedulesCount))
 		eventSourceSchedulesCount += 1
+	}
+	if eventSource.ScheduleSpec.Gcp.Region == nil {
+		eventSource.ScheduleSpec.Gcp.Region = &options.Cloud.Gcp.Region
+	}
+	if eventSource.ScheduleSpec.Gcp.HttpTarget != nil {
+		if eventSource.ScheduleSpec.Gcp.HttpTarget.Uri == nil {
+			eventSource.ScheduleSpec.Gcp.HttpTarget.Uri = jsii.String(cloudSchedulerPlaceholderHttpTargetUri)
+		}
 	}
 	name := eventSource.ScheduleSpec.Gcp.Name
 	job := google.NewCloudSchedulerJob(*scope, name, &eventSource.ScheduleSpec.Gcp)
