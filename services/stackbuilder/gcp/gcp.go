@@ -22,7 +22,7 @@ func NewGcpStack(scope *cdktf.App, id string, config GcpStackConfig) cdktf.Terra
 		Project: &config.Options.Cloud.Gcp.Project,
 		Zone:    &config.Options.Cloud.Gcp.Region,
 	})
-	google_beta.NewGoogleBetaProvider(stack, jsii.String("GoogleBeta"), &google_beta.GoogleBetaProviderConfig{
+	betaProvider := google_beta.NewGoogleBetaProvider(stack, jsii.String("GoogleBeta"), &google_beta.GoogleBetaProviderConfig{
 		Project: &config.Options.Cloud.Gcp.Project,
 		Zone:    &config.Options.Cloud.Gcp.Region,
 	})
@@ -42,37 +42,58 @@ func NewGcpStack(scope *cdktf.App, id string, config GcpStackConfig) cdktf.Terra
 		}
 		for j := range functionModules {
 			functionModule := functionModules[j]
-			function := *newFunction(&stack, functionModule, &support, manifest, config.Options)
+			function := *newFunction(&stack, functionModule, &support, manifest, config.Options, &betaProvider)
 			if functionModule.EventSource.EventSpec != (module.EventSource{}.EventSpec) {
 				eventTopic := *newTopicEventSource(&stack, &functionModule.EventSource)
 				if function.EventTriggerInput() == nil {
 					function.PutEventTrigger(&google_beta.GoogleCloudfunctions2FunctionEventTrigger{})
 				}
-				if function.EventTriggerInput().PubsubTopic == nil {
-					eventTrigger := function.EventTriggerInput()
+				eventTrigger := function.EventTriggerInput()
+				if eventTrigger.PubsubTopic == nil {
 					eventTrigger.PubsubTopic = eventTopic.Id()
-					function.PutEventTrigger(eventTrigger)
 				}
-				if function.EventTriggerInput().EventType == nil {
-					eventTrigger := function.EventTriggerInput()
+				if eventTrigger.EventType == nil {
 					eventTrigger.EventType = jsii.String("google.cloud.pubsub.topic.v1.messagePublished")
-					function.PutEventTrigger(eventTrigger)
 				}
+				if eventTrigger.RetryPolicy == nil {
+					eventTrigger.RetryPolicy = jsii.String("RETRY_POLICY_DO_NOT_RETRY")
+				}
+				if eventTrigger.TriggerRegion == nil {
+					eventTrigger.TriggerRegion = &config.Options.Cloud.Gcp.Region
+				}
+				function.PutEventTrigger(eventTrigger)
 			} else if functionModule.EventSource.QueueSpec != (module.EventSource{}.QueueSpec) {
 				newQueueEventSource(&stack, &functionModule.EventSource, config.Options)
 			} else if functionModule.EventSource.ScheduleSpec != (module.EventSource{}.ScheduleSpec) {
-				schedule := *newScheduleEventSource(&stack, &functionModule.EventSource)
+				schedule := *newScheduleEventSource(&stack, &functionModule.EventSource, config.Options)
 				if schedule.HttpTargetInput() == nil {
-					schedule.PutHttpTarget(&google.CloudSchedulerJobHttpTarget{Uri: function.ServiceConfig().GcfUri()})
+					schedule.PutHttpTarget(
+						&google.CloudSchedulerJobHttpTarget{Uri: jsii.String(cloudSchedulerPlaceholderHttpTargetUri)},
+					)
 				}
-				if schedule.HttpTargetInput().Uri == nil {
-					httpTarget := schedule.HttpTargetInput()
-					httpTarget.Uri = function.ServiceConfig().GcfUri()
+				if httpTarget := schedule.HttpTargetInput(); httpTarget != nil {
+					if httpTarget.Uri == nil || *httpTarget.Uri == cloudSchedulerPlaceholderHttpTargetUri {
+						httpTarget.Uri = function.ServiceConfig().Uri()
+					}
+					if httpTarget.HttpMethod == nil {
+						httpTarget.HttpMethod = jsii.String("POST")
+					}
+					if httpTarget.OidcToken == nil {
+						computeDefaultServiceAccount := google.NewDataGoogleComputeDefaultServiceAccount(
+							stack,
+							jsii.String("ComputeDefaultServiceAccount"),
+							&google.DataGoogleComputeDefaultServiceAccountConfig{},
+						)
+						httpTarget.OidcToken = &google.CloudSchedulerJobHttpTargetOidcToken{
+							ServiceAccountEmail: computeDefaultServiceAccount.Email(),
+							Audience:            function.ServiceConfig().Uri(),
+						}
+					}
 					schedule.PutHttpTarget(httpTarget)
 				}
 			}
 			if functionModule.Security.NoAuthentication {
-				newAllUsersCloudFunctionInvoker(&stack, functionModule.Name)
+				newAllUsersCloudFunctionInvoker(&stack, &function, functionModule)
 			}
 			if functionModule.Networking.Internal {
 				serviceConfig := function.ServiceConfigInput()
