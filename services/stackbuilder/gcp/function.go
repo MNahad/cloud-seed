@@ -18,6 +18,7 @@ func newFunction(
 	supportInfrastructure *supportInfrastructure,
 	manifest *module.Manifest,
 	options *project.Config,
+	betaProvider *google_beta.GoogleBetaProvider,
 ) *google_beta.GoogleCloudfunctions2Function {
 	archivePath, _ := filepath.Abs(filepath.Join(
 		options.BuildConfig.OutDir,
@@ -30,7 +31,7 @@ func newFunction(
 		jsii.String(config.Name+"-sourceArchive"),
 		&google.StorageBucketObjectConfig{
 			Bucket: (*supportInfrastructure.function.archiveBucket).Name(),
-			Name:   jsii.String(config.Name + "-source"),
+			Name:   jsii.String(config.Name + "-source-" + *cdktf.Fn_Urlencode(cdktf.Fn_Filebase64sha512(&archivePath)) + ".zip"),
 			Source: &archivePath,
 		},
 	)
@@ -38,6 +39,9 @@ func newFunction(
 	(*functionConfig) = config.Service.Function.Gcp
 	if functionConfig.Name == nil {
 		functionConfig.Name = &config.Name
+	}
+	if functionConfig.Location == nil {
+		functionConfig.Location = &options.Cloud.Gcp.Region
 	}
 	if functionConfig.BuildConfig == nil {
 		functionConfig.BuildConfig = &google_beta.GoogleCloudfunctions2FunctionBuildConfig{}
@@ -64,11 +68,14 @@ func newFunction(
 	if functionConfig.ServiceConfig.EnvironmentVariables == nil {
 		functionConfig.ServiceConfig.EnvironmentVariables = &map[string]*string{}
 	}
-	for k, v := range options.EnvironmentConfig.RuntimeEnvironmentVariables {
+	for k := range options.EnvironmentConfig.RuntimeEnvironmentVariables {
 		if (*functionConfig.ServiceConfig.EnvironmentVariables)[k] == nil {
-			(*functionConfig.ServiceConfig.EnvironmentVariables)[k] = &v
+			(*functionConfig.ServiceConfig.EnvironmentVariables)[k] = jsii.String(
+				options.EnvironmentConfig.RuntimeEnvironmentVariables[k],
+			)
 		}
 	}
+	functionConfig.Provider = *betaProvider
 	function := google_beta.NewGoogleCloudfunctions2Function(*scope, &config.Name, functionConfig)
 	return &function
 }
