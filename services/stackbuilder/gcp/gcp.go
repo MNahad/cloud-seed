@@ -4,7 +4,6 @@ import (
 	"github.com/aws/jsii-runtime-go"
 	"github.com/hashicorp/terraform-cdk-go/cdktf"
 	"github.com/mnahad/cloud-seed/generated/google"
-	"github.com/mnahad/cloud-seed/generated/google_beta"
 	"github.com/mnahad/cloud-seed/services/config/module"
 	"github.com/mnahad/cloud-seed/services/config/project"
 )
@@ -19,10 +18,6 @@ func NewGcpStack(scope *cdktf.App, id string, config GcpStackConfig) cdktf.Terra
 	support := supportInfrastructure{}
 	stack := cdktf.NewTerraformStack(*scope, &id)
 	google.NewGoogleProvider(stack, jsii.String("Google"), &google.GoogleProviderConfig{
-		Project: &config.Options.Cloud.Gcp.Project,
-		Zone:    &config.Options.Cloud.Gcp.Region,
-	})
-	betaProvider := google_beta.NewGoogleBetaProvider(stack, jsii.String("GoogleBeta"), &google_beta.GoogleBetaProviderConfig{
 		Project: &config.Options.Cloud.Gcp.Project,
 		Zone:    &config.Options.Cloud.Gcp.Region,
 	})
@@ -42,11 +37,11 @@ func NewGcpStack(scope *cdktf.App, id string, config GcpStackConfig) cdktf.Terra
 		}
 		for j := range functionModules {
 			functionModule := functionModules[j]
-			function := *newFunction(&stack, functionModule, &support, manifest, config.Options, &betaProvider)
+			function := *newFunction(&stack, functionModule, &support, manifest, config.Options)
 			if functionModule.EventSource.EventSpec != (module.EventSource{}.EventSpec) {
 				eventTopic := *newTopicEventSource(&stack, &functionModule.EventSource)
 				if function.EventTriggerInput() == nil {
-					function.PutEventTrigger(&google_beta.GoogleCloudfunctions2FunctionEventTrigger{})
+					function.PutEventTrigger(&google.Cloudfunctions2FunctionEventTrigger{})
 				}
 				eventTrigger := function.EventTriggerInput()
 				if eventTrigger.PubsubTopic == nil {
@@ -98,7 +93,7 @@ func NewGcpStack(scope *cdktf.App, id string, config GcpStackConfig) cdktf.Terra
 			if functionModule.Networking.Internal {
 				serviceConfig := function.ServiceConfigInput()
 				if serviceConfig == nil {
-					serviceConfig = &google_beta.GoogleCloudfunctions2FunctionServiceConfig{}
+					serviceConfig = &google.Cloudfunctions2FunctionServiceConfig{}
 				}
 				if serviceConfig.IngressSettings == nil {
 					serviceConfig.IngressSettings = jsii.String("ALLOW_INTERNAL_ONLY")

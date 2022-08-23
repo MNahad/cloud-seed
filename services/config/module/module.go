@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/mnahad/cloud-seed/generated/google"
-	"github.com/mnahad/cloud-seed/generated/google_beta"
 	"github.com/mnahad/cloud-seed/services/config/project"
 )
 
@@ -150,8 +149,8 @@ func (c *EventSource) UnmarshalJSON(b []byte) error {
 
 type Service struct {
 	Function struct {
-		Gcp google_beta.GoogleCloudfunctions2FunctionConfig `json:"gcp"`
-		Aws any                                             `json:"aws"`
+		Gcp google.Cloudfunctions2FunctionConfig `json:"gcp"`
+		Aws any                                  `json:"aws"`
 	} `json:"function"`
 	Container struct {
 		Gcp google.CloudRunServiceConfig `json:"gcp"`

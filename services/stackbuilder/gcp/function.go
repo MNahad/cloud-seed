@@ -6,7 +6,6 @@ import (
 	"github.com/aws/jsii-runtime-go"
 	"github.com/hashicorp/terraform-cdk-go/cdktf"
 	"github.com/mnahad/cloud-seed/generated/google"
-	"github.com/mnahad/cloud-seed/generated/google_beta"
 	gcpArtefactGenerator "github.com/mnahad/cloud-seed/services/artefactgenerator/gcp"
 	"github.com/mnahad/cloud-seed/services/config/module"
 	"github.com/mnahad/cloud-seed/services/config/project"
@@ -18,8 +17,7 @@ func newFunction(
 	supportInfrastructure *supportInfrastructure,
 	manifest *module.Manifest,
 	options *project.Config,
-	betaProvider *google_beta.GoogleBetaProvider,
-) *google_beta.GoogleCloudfunctions2Function {
+) *google.Cloudfunctions2Function {
 	archivePath, _ := filepath.Abs(filepath.Join(
 		options.BuildConfig.OutDir,
 		gcpArtefactGenerator.GetArtefactPrefix(gcpArtefactGenerator.FunctionArtefact),
@@ -35,7 +33,7 @@ func newFunction(
 			Source: &archivePath,
 		},
 	)
-	functionConfig := new(google_beta.GoogleCloudfunctions2FunctionConfig)
+	functionConfig := new(google.Cloudfunctions2FunctionConfig)
 	(*functionConfig) = config.Service.Function.Gcp
 	if functionConfig.Name == nil {
 		functionConfig.Name = &config.Name
@@ -44,20 +42,20 @@ func newFunction(
 		functionConfig.Location = &options.Cloud.Gcp.Region
 	}
 	if functionConfig.BuildConfig == nil {
-		functionConfig.BuildConfig = &google_beta.GoogleCloudfunctions2FunctionBuildConfig{}
+		functionConfig.BuildConfig = &google.Cloudfunctions2FunctionBuildConfig{}
 	}
 	if functionConfig.ServiceConfig == nil {
-		functionConfig.ServiceConfig = &google_beta.GoogleCloudfunctions2FunctionServiceConfig{}
+		functionConfig.ServiceConfig = &google.Cloudfunctions2FunctionServiceConfig{}
 	}
 	if functionConfig.BuildConfig.EntryPoint == nil {
 		functionConfig.BuildConfig.EntryPoint = &config.Name
 	}
 	if functionConfig.BuildConfig.Source == nil {
-		functionConfig.BuildConfig.Source = &google_beta.GoogleCloudfunctions2FunctionBuildConfigSource{}
+		functionConfig.BuildConfig.Source = &google.Cloudfunctions2FunctionBuildConfigSource{}
 	}
 	if functionConfig.BuildConfig.Source.StorageSource == nil {
 		functionConfig.BuildConfig.Source.StorageSource =
-			&google_beta.GoogleCloudfunctions2FunctionBuildConfigSourceStorageSource{}
+			&google.Cloudfunctions2FunctionBuildConfigSourceStorageSource{}
 	}
 	if functionConfig.BuildConfig.Source.StorageSource.Bucket == nil {
 		functionConfig.BuildConfig.Source.StorageSource.Bucket = archiveObject.Bucket()
@@ -75,7 +73,6 @@ func newFunction(
 			)
 		}
 	}
-	functionConfig.Provider = *betaProvider
-	function := google_beta.NewGoogleCloudfunctions2Function(*scope, &config.Name, functionConfig)
+	function := google.NewCloudfunctions2Function(*scope, &config.Name, functionConfig)
 	return &function
 }
