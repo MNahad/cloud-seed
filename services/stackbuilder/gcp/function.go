@@ -23,7 +23,6 @@ func newFunction(
 		gcpArtefactGenerator.GetArtefactPrefix(gcpArtefactGenerator.FunctionArtefact),
 		config.Name,
 	) + ".zip")
-
 	archiveObject := google.NewStorageBucketObject(
 		*scope,
 		jsii.String(config.Name+"-sourceArchive"),

@@ -146,10 +146,15 @@ func (s *supportInfrastructure) generateInfrastructure(
 		}
 	case kindFunction:
 		{
-			archiveBucket := google.NewStorageBucket(*scope, jsii.String("ArchiveBucket"), &google.StorageBucketConfig{
-				Name:     jsii.String(options.Cloud.Gcp.Project + "-functions"),
-				Location: &options.Cloud.Gcp.Region,
-			})
+			archiveBucketConfig := new(google.StorageBucketConfig)
+			(*archiveBucketConfig) = options.Cloud.Gcp.SourceCodeStorage.Bucket
+			if archiveBucketConfig.Name == nil {
+				archiveBucketConfig.Name = jsii.String(options.Cloud.Gcp.Project + "-functions-src")
+			}
+			if archiveBucketConfig.Location == nil {
+				archiveBucketConfig.Location = &options.Cloud.Gcp.Region
+			}
+			archiveBucket := google.NewStorageBucket(*scope, jsii.String("ArchiveBucket"), archiveBucketConfig)
 			s.function.archiveBucket = &archiveBucket
 		}
 	case kindContainer:
