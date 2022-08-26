@@ -59,6 +59,9 @@ type cloudConfig struct {
 			SourceCodeStorage struct {
 				Bucket google.StorageBucketConfig `json:"bucket"`
 			} `json:"sourceCodeStorage"`
+			StaticIpNetwork struct {
+				Network google.ComputeNetworkConfig `json:"network"`
+			} `json:"staticIpNetwork"`
 		} `json:"gcp"`
 	} `json:"cloud"`
 }
@@ -72,6 +75,9 @@ func (c *cloudConfig) merge(other *cloudConfig) {
 	}
 	if other.Cloud.Gcp.SourceCodeStorage.Bucket != (google.StorageBucketConfig{}) {
 		c.Cloud.Gcp.SourceCodeStorage.Bucket = other.Cloud.Gcp.SourceCodeStorage.Bucket
+	}
+	if other.Cloud.Gcp.StaticIpNetwork.Network != (google.ComputeNetworkConfig{}) {
+		c.Cloud.Gcp.StaticIpNetwork.Network = other.Cloud.Gcp.StaticIpNetwork.Network
 	}
 }
 

@@ -100,6 +100,20 @@ func NewGcpStack(scope *cdktf.App, id string, config GcpStackConfig) cdktf.Terra
 					function.PutServiceConfig(serviceConfig)
 				}
 			}
+			if functionModule.Networking.Egress.StaticIp {
+				connector := generateVpcAccessConnector(&stack, config.Options)
+				serviceConfig := function.ServiceConfigInput()
+				if serviceConfig == nil {
+					serviceConfig = &google.Cloudfunctions2FunctionServiceConfig{}
+				}
+				if serviceConfig.VpcConnector == nil {
+					serviceConfig.VpcConnector = (*connector).Name()
+				}
+				if serviceConfig.VpcConnectorEgressSettings == nil {
+					serviceConfig.VpcConnectorEgressSettings = jsii.String("ALL_TRAFFIC")
+				}
+				function.PutServiceConfig(serviceConfig)
+			}
 		}
 	}
 	return stack
