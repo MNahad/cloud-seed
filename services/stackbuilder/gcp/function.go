@@ -4,8 +4,8 @@ import (
 	"path/filepath"
 
 	"github.com/aws/jsii-runtime-go"
+	"github.com/hashicorp/cdktf-provider-google-go/google/v2"
 	"github.com/hashicorp/terraform-cdk-go/cdktf"
-	"github.com/mnahad/cloud-seed/generated/google"
 	gcpArtefactGenerator "github.com/mnahad/cloud-seed/services/artefactgenerator/gcp"
 	"github.com/mnahad/cloud-seed/services/config/module"
 	"github.com/mnahad/cloud-seed/services/config/project"

@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/mnahad/cloud-seed/generated/google"
+	"github.com/hashicorp/cdktf-provider-google-go/google/v2"
 	"github.com/mnahad/cloud-seed/services/config/project"
 )
 

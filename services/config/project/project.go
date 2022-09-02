@@ -5,8 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/hashicorp/cdktf-provider-google-go/google/v2"
 	"github.com/hashicorp/terraform-cdk-go/cdktf"
-	"github.com/mnahad/cloud-seed/generated/google"
 )
 
 type Config struct {
