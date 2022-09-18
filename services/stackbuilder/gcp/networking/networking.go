@@ -1,4 +1,4 @@
-package gcp
+package networking
 
 import (
 	"github.com/aws/jsii-runtime-go"
@@ -7,13 +7,13 @@ import (
 	"github.com/mnahad/cloud-seed/services/config/project"
 )
 
-var networkingVpcAccessConnector *google.VpcAccessConnector
+var vpcAccessConnector *google.VpcAccessConnector
 
-func generateVpcAccessConnector(scope *cdktf.TerraformStack, options *project.Config) *google.VpcAccessConnector {
-	if networkingVpcAccessConnector == nil {
-		networkingVpcAccessConnector = newStaticIpNetwork(scope, options)
+func GenerateVpcAccessConnector(scope *cdktf.TerraformStack, options *project.Config) *google.VpcAccessConnector {
+	if vpcAccessConnector == nil {
+		vpcAccessConnector = newStaticIpNetwork(scope, options)
 	}
-	return networkingVpcAccessConnector
+	return vpcAccessConnector
 }
 
 func newStaticIpNetwork(scope *cdktf.TerraformStack, options *project.Config) *google.VpcAccessConnector {
@@ -26,33 +26,65 @@ func newStaticIpNetwork(scope *cdktf.TerraformStack, options *project.Config) *g
 		networkConfig.AutoCreateSubnetworks = false
 	}
 	network := google.NewComputeNetwork(*scope, networkConfig.Name, networkConfig)
-	staticIpName := *networkConfig.Name + "-ip"
-	staticIp := google.NewComputeAddress(*scope, &staticIpName, &google.ComputeAddressConfig{
-		Name:        &staticIpName,
-		Region:      &options.Cloud.Gcp.Region,
-		AddressType: jsii.String("EXTERNAL"),
-	})
-	routerName := *networkConfig.Name + "-router"
-	router := google.NewComputeRouter(*scope, &routerName, &google.ComputeRouterConfig{
-		Name:    &routerName,
-		Region:  &options.Cloud.Gcp.Region,
-		Network: network.Id(),
-	})
-	natName := *networkConfig.Name + "-nat"
-	google.NewComputeRouterNat(*scope, &natName, &google.ComputeRouterNatConfig{
-		Name:                          &natName,
-		Region:                        &options.Cloud.Gcp.Region,
-		Router:                        router.Name(),
-		NatIpAllocateOption:           jsii.String("MANUAL_ONLY"),
-		NatIps:                        &[]*string{staticIp.SelfLink()},
-		SourceSubnetworkIpRangesToNat: jsii.String("ALL_SUBNETWORKS_ALL_IP_RANGES"),
-	})
-	connectorName := *networkConfig.Name + "-connector"
-	connector := google.NewVpcAccessConnector(*scope, &connectorName, &google.VpcAccessConnectorConfig{
-		Name:        &connectorName,
-		Region:      &options.Cloud.Gcp.Region,
-		Network:     network.Name(),
-		IpCidrRange: jsii.String("10.0.0.0/28"),
-	})
+	staticIpConfig := new(google.ComputeAddressConfig)
+	(*staticIpConfig) = options.Cloud.Gcp.StaticIpNetwork.Ip
+	if staticIpConfig.Name == nil {
+		staticIpConfig.Name = jsii.String(*networkConfig.Name + "-ip")
+	}
+	if staticIpConfig.AddressType == nil {
+		staticIpConfig.AddressType = jsii.String("EXTERNAL")
+	}
+	if staticIpConfig.Region == nil {
+		staticIpConfig.Region = options.Cloud.Gcp.Provider.Region
+	}
+	staticIp := google.NewComputeAddress(*scope, staticIpConfig.Name, staticIpConfig)
+	routerConfig := new(google.ComputeRouterConfig)
+	(*routerConfig) = options.Cloud.Gcp.StaticIpNetwork.Router
+	if routerConfig.Name == nil {
+		routerConfig.Name = jsii.String(*networkConfig.Name + "-router")
+	}
+	if routerConfig.Network == nil {
+		routerConfig.Network = network.Id()
+	}
+	if routerConfig.Region == nil {
+		routerConfig.Region = options.Cloud.Gcp.Provider.Region
+	}
+	router := google.NewComputeRouter(*scope, routerConfig.Name, routerConfig)
+	natConfig := new(google.ComputeRouterNatConfig)
+	(*natConfig) = options.Cloud.Gcp.StaticIpNetwork.Nat
+	if natConfig.Name == nil {
+		natConfig.Name = jsii.String(*networkConfig.Name + "-nat")
+	}
+	if natConfig.Router == nil {
+		natConfig.Router = router.Name()
+	}
+	if natConfig.NatIpAllocateOption == nil {
+		natConfig.NatIpAllocateOption = jsii.String("MANUAL_ONLY")
+	}
+	if natConfig.NatIps == nil {
+		natConfig.NatIps = &[]*string{staticIp.SelfLink()}
+	}
+	if natConfig.SourceSubnetworkIpRangesToNat == nil {
+		natConfig.SourceSubnetworkIpRangesToNat = jsii.String("ALL_SUBNETWORKS_ALL_IP_RANGES")
+	}
+	if natConfig.Region == nil {
+		natConfig.Region = options.Cloud.Gcp.Provider.Region
+	}
+	google.NewComputeRouterNat(*scope, natConfig.Name, natConfig)
+	connectorConfig := new(google.VpcAccessConnectorConfig)
+	(*connectorConfig) = options.Cloud.Gcp.StaticIpNetwork.Connector
+	if connectorConfig.Name == nil {
+		connectorConfig.Name = jsii.String(*networkConfig.Name + "-connector")
+	}
+	if connectorConfig.Network == nil {
+		connectorConfig.Network = network.Name()
+	}
+	if connectorConfig.IpCidrRange == nil {
+		connectorConfig.IpCidrRange = jsii.String("10.0.0.0/28")
+	}
+	if connectorConfig.Region == nil {
+		connectorConfig.Region = options.Cloud.Gcp.Provider.Region
+	}
+	connector := google.NewVpcAccessConnector(*scope, connectorConfig.Name, connectorConfig)
 	return &connector
 }

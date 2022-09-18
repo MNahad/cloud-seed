@@ -14,6 +14,7 @@ type Config struct {
 	tfConfig
 	buildConfig
 	environmentConfig
+	orchestrationConfig
 	metadata
 }
 
@@ -30,6 +31,7 @@ func (projectConfig *ConfigFile) MergeConfig(env *string) Config {
 	conf.tfConfig.merge(&envConf.tfConfig)
 	conf.buildConfig.merge(&envConf.buildConfig)
 	conf.environmentConfig.merge(&envConf.environmentConfig)
+	conf.orchestrationConfig.merge(&envConf.orchestrationConfig)
 	conf.metadata.merge(&envConf.metadata)
 	return *conf
 }
@@ -54,30 +56,54 @@ func DetectConfig() (*ConfigFile, error) {
 type cloudConfig struct {
 	Cloud struct {
 		Gcp struct {
-			Project           string `json:"project"`
-			Region            string `json:"region"`
+			Provider google.GoogleProviderConfig `json:"provider"`
+			Security struct {
+				RuntimeServiceAccount google.ServiceAccountConfig `json:"runtimeServiceAccount"`
+			} `json:"security"`
 			SourceCodeStorage struct {
 				Bucket google.StorageBucketConfig `json:"bucket"`
 			} `json:"sourceCodeStorage"`
+			SecretsManagement struct {
+				Secrets google.SecretManagerSecretConfig `json:"secrets"`
+			} `json:"secretsManagement"`
 			StaticIpNetwork struct {
-				Network google.ComputeNetworkConfig `json:"network"`
+				Network   google.ComputeNetworkConfig     `json:"network"`
+				Router    google.ComputeRouterConfig      `json:"router"`
+				Nat       google.ComputeRouterNatConfig   `json:"nat"`
+				Ip        google.ComputeAddressConfig     `json:"ip"`
+				Connector google.VpcAccessConnectorConfig `json:"connector"`
 			} `json:"staticIpNetwork"`
 		} `json:"gcp"`
 	} `json:"cloud"`
 }
 
 func (c *cloudConfig) merge(other *cloudConfig) {
-	if other.Cloud.Gcp.Project != "" {
-		c.Cloud.Gcp.Project = other.Cloud.Gcp.Project
+	if other.Cloud.Gcp.Provider != (google.GoogleProviderConfig{}) {
+		c.Cloud.Gcp.Provider = other.Cloud.Gcp.Provider
 	}
-	if other.Cloud.Gcp.Region != "" {
-		c.Cloud.Gcp.Region = other.Cloud.Gcp.Region
+	if other.Cloud.Gcp.Security.RuntimeServiceAccount != (google.ServiceAccountConfig{}) {
+		c.Cloud.Gcp.Security.RuntimeServiceAccount = other.Cloud.Gcp.Security.RuntimeServiceAccount
 	}
 	if other.Cloud.Gcp.SourceCodeStorage.Bucket != (google.StorageBucketConfig{}) {
 		c.Cloud.Gcp.SourceCodeStorage.Bucket = other.Cloud.Gcp.SourceCodeStorage.Bucket
 	}
+	if other.Cloud.Gcp.SecretsManagement.Secrets != (google.SecretManagerSecretConfig{}) {
+		c.Cloud.Gcp.SecretsManagement.Secrets = other.Cloud.Gcp.SecretsManagement.Secrets
+	}
 	if other.Cloud.Gcp.StaticIpNetwork.Network != (google.ComputeNetworkConfig{}) {
 		c.Cloud.Gcp.StaticIpNetwork.Network = other.Cloud.Gcp.StaticIpNetwork.Network
+	}
+	if other.Cloud.Gcp.StaticIpNetwork.Router != (google.ComputeRouterConfig{}) {
+		c.Cloud.Gcp.StaticIpNetwork.Router = other.Cloud.Gcp.StaticIpNetwork.Router
+	}
+	if other.Cloud.Gcp.StaticIpNetwork.Nat != (google.ComputeRouterNatConfig{}) {
+		c.Cloud.Gcp.StaticIpNetwork.Nat = other.Cloud.Gcp.StaticIpNetwork.Nat
+	}
+	if other.Cloud.Gcp.StaticIpNetwork.Ip != (google.ComputeAddressConfig{}) {
+		c.Cloud.Gcp.StaticIpNetwork.Ip = other.Cloud.Gcp.StaticIpNetwork.Ip
+	}
+	if other.Cloud.Gcp.StaticIpNetwork.Connector != (google.VpcAccessConnectorConfig{}) {
+		c.Cloud.Gcp.StaticIpNetwork.Connector = other.Cloud.Gcp.StaticIpNetwork.Connector
 	}
 }
 
@@ -98,7 +124,7 @@ func (c *tfConfig) merge(other *tfConfig) {
 	if other.TfConfig.Backend.Local != (cdktf.LocalBackendProps{}) {
 		c.TfConfig.Backend.Local = other.TfConfig.Backend.Local
 	}
-	if other.TfConfig.Cdktf != "" {
+	if len(other.TfConfig.Cdktf) > 0 {
 		c.TfConfig.Cdktf = other.TfConfig.Cdktf
 	}
 }
@@ -146,10 +172,10 @@ type buildConfig struct {
 }
 
 func (c *buildConfig) merge(other *buildConfig) {
-	if other.BuildConfig.Dir != "" {
+	if len(other.BuildConfig.Dir) > 0 {
 		c.BuildConfig.Dir = other.BuildConfig.Dir
 	}
-	if other.BuildConfig.OutDir != "" {
+	if len(other.BuildConfig.OutDir) > 0 {
 		c.BuildConfig.OutDir = other.BuildConfig.OutDir
 	}
 }
@@ -163,17 +189,36 @@ type environmentConfig struct {
 
 func (c *environmentConfig) merge(other *environmentConfig) {
 	if c.EnvironmentConfig.RuntimeEnvironmentVariables == nil {
-		c.EnvironmentConfig.RuntimeEnvironmentVariables = make(map[string]string)
+		c.EnvironmentConfig.RuntimeEnvironmentVariables =
+			make(map[string]string, len(other.EnvironmentConfig.RuntimeEnvironmentVariables))
 	}
 	for k, v := range other.EnvironmentConfig.RuntimeEnvironmentVariables {
 		c.EnvironmentConfig.RuntimeEnvironmentVariables[k] = v
 	}
 	if c.EnvironmentConfig.SecretVariableNames == nil {
-		c.EnvironmentConfig.SecretVariableNames = make([]string, 0)
-	}
-	if other.EnvironmentConfig.SecretVariableNames != nil {
 		c.EnvironmentConfig.SecretVariableNames =
-			append(c.EnvironmentConfig.SecretVariableNames, other.EnvironmentConfig.SecretVariableNames...)
+			make([]string, len(other.EnvironmentConfig.SecretVariableNames))
+	}
+	for i := range other.EnvironmentConfig.SecretVariableNames {
+		c.EnvironmentConfig.SecretVariableNames[i] = other.EnvironmentConfig.SecretVariableNames[i]
+	}
+}
+
+type orchestrationConfig struct {
+	OrchestrationConfig struct {
+		Gcp struct {
+			FilePath string                         `json:"filePath"`
+			Config   google.WorkflowsWorkflowConfig `json:"config"`
+		} `json:"gcp"`
+	} `json:"orchestrationConfig"`
+}
+
+func (c *orchestrationConfig) merge(other *orchestrationConfig) {
+	if len(other.OrchestrationConfig.Gcp.FilePath) > 0 {
+		c.OrchestrationConfig.Gcp.FilePath = other.OrchestrationConfig.Gcp.FilePath
+	}
+	if other.OrchestrationConfig.Gcp.Config != (google.WorkflowsWorkflowConfig{}) {
+		c.OrchestrationConfig.Gcp.Config = other.OrchestrationConfig.Gcp.Config
 	}
 }
 
@@ -183,7 +228,7 @@ type metadata struct {
 
 func (c *metadata) merge(other *metadata) {
 	if c.Metadata == nil {
-		c.Metadata = make(map[string]string)
+		c.Metadata = make(map[string]string, len(other.Metadata))
 	}
 	for k, v := range other.Metadata {
 		c.Metadata[k] = v

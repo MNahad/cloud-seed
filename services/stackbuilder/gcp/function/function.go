@@ -1,4 +1,4 @@
-package gcp
+package function
 
 import (
 	"path/filepath"
@@ -11,24 +11,29 @@ import (
 	"github.com/mnahad/cloud-seed/services/config/project"
 )
 
-func newFunction(
+func NewFunction(
 	scope *cdktf.TerraformStack,
 	config *module.Module,
-	supportInfrastructure *supportInfrastructure,
-	manifest *module.Manifest,
+	archiveBucket *google.StorageBucket,
+	runtimeServiceAccountEmail *string,
 	options *project.Config,
 ) *google.Cloudfunctions2Function {
-	archivePath, _ := filepath.Abs(filepath.Join(
+	archivePath, err := filepath.Abs(filepath.Join(
 		options.BuildConfig.OutDir,
 		gcpArtefactGenerator.GetArtefactPrefix(gcpArtefactGenerator.FunctionArtefact),
 		config.Name,
 	) + ".zip")
+	if err != nil {
+		panic(err)
+	}
 	archiveObject := google.NewStorageBucketObject(
 		*scope,
 		jsii.String(config.Name+"-sourceArchive"),
 		&google.StorageBucketObjectConfig{
-			Bucket: (*supportInfrastructure.function.archiveBucket).Name(),
-			Name:   jsii.String(config.Name + "-source-" + *cdktf.Fn_Urlencode(cdktf.Fn_Filebase64sha512(&archivePath)) + ".zip"),
+			Bucket: (*archiveBucket).Name(),
+			Name: jsii.String(
+				config.Name + "-source-" + *cdktf.Fn_Urlencode(cdktf.Fn_Filebase64sha512(&archivePath)) + ".zip",
+			),
 			Source: &archivePath,
 		},
 	)
@@ -38,13 +43,25 @@ func newFunction(
 		functionConfig.Name = &config.Name
 	}
 	if functionConfig.Location == nil {
-		functionConfig.Location = &options.Cloud.Gcp.Region
+		functionConfig.Location = options.Cloud.Gcp.Provider.Region
 	}
 	if functionConfig.BuildConfig == nil {
 		functionConfig.BuildConfig = &google.Cloudfunctions2FunctionBuildConfig{}
 	}
 	if functionConfig.ServiceConfig == nil {
 		functionConfig.ServiceConfig = &google.Cloudfunctions2FunctionServiceConfig{}
+	}
+	if functionConfig.ServiceConfig.AvailableMemory == nil {
+		functionConfig.ServiceConfig.AvailableMemory = jsii.String("256M")
+	}
+	if functionConfig.ServiceConfig.MaxInstanceCount == nil {
+		functionConfig.ServiceConfig.MaxInstanceCount = jsii.Number(100)
+	}
+	if functionConfig.ServiceConfig.TimeoutSeconds == nil {
+		functionConfig.ServiceConfig.TimeoutSeconds = jsii.Number(60)
+	}
+	if functionConfig.ServiceConfig.ServiceAccountEmail == nil {
+		functionConfig.ServiceConfig.ServiceAccountEmail = runtimeServiceAccountEmail
 	}
 	if functionConfig.BuildConfig.EntryPoint == nil {
 		functionConfig.BuildConfig.EntryPoint = &config.Name
@@ -63,7 +80,8 @@ func newFunction(
 		functionConfig.BuildConfig.Source.StorageSource.Object = archiveObject.Name()
 	}
 	if functionConfig.ServiceConfig.EnvironmentVariables == nil {
-		functionConfig.ServiceConfig.EnvironmentVariables = &map[string]*string{}
+		envVars := make(map[string]*string, len(options.EnvironmentConfig.RuntimeEnvironmentVariables))
+		functionConfig.ServiceConfig.EnvironmentVariables = &envVars
 	}
 	for k := range options.EnvironmentConfig.RuntimeEnvironmentVariables {
 		if (*functionConfig.ServiceConfig.EnvironmentVariables)[k] == nil {

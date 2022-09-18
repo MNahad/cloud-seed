@@ -18,6 +18,9 @@ type Manifest struct {
 
 func (m *Manifest) FilterModules(predicates []func(*Module) bool) [][]*Module {
 	filtered := make([][]*Module, len(predicates))
+	for i := range predicates {
+		filtered[i] = make([]*Module, 0, len(m.Modules))
+	}
 	for i := range m.Modules {
 		module := &m.Modules[i]
 		for j := range predicates {
@@ -49,7 +52,7 @@ func (m *Manifest) UnmarshalJSON(b []byte) error {
 }
 
 func DetectManifests(config *project.Config) ([]Manifest, error) {
-	manifests := make([]Manifest, 0)
+	manifests := make([]Manifest, 0, 100)
 	err := filepath.WalkDir(config.BuildConfig.Dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -181,7 +184,34 @@ type Security struct {
 }
 
 type Orchestration struct {
-	Workflow any `json:"workflow"`
+	Workflow struct {
+		Start bool `json:"start"`
+		End   bool `json:"end"`
+		Input struct {
+			Expression struct {
+				Gcp string `json:"gcp"`
+				Aws string `json:"aws"`
+			} `json:"expression"`
+		} `json:"input"`
+		Output struct {
+			Expression struct {
+				Gcp string `json:"gcp"`
+				Aws string `json:"aws"`
+			} `json:"expression"`
+		} `json:"output"`
+		Next struct {
+			Jump struct {
+				ServiceName string `json:"serviceName"`
+			} `json:"jump"`
+			Condition []struct {
+				Expression struct {
+					Gcp string `json:"gcp"`
+					Aws string `json:"aws"`
+				} `json:"expression"`
+				ServiceName string `json:"serviceName"`
+			} `json:"condition"`
+		} `json:"next"`
+	} `json:"workflow"`
 }
 
 type Metadata struct {

@@ -1,4 +1,4 @@
-package gcp
+package eventsource
 
 import (
 	"strconv"
@@ -10,52 +10,61 @@ import (
 	"github.com/mnahad/cloud-seed/services/config/project"
 )
 
-var eventSourceTopics = make(map[string]*google.PubsubTopic, 0)
-var eventSourceQueues = make(map[string]*google.CloudTasksQueue, 0)
-var eventSourceSchedulesCount int
+var topics = make(map[string]*google.PubsubTopic)
+var queues = make(map[string]*google.CloudTasksQueue)
+var schedulesCount int
 
-const cloudSchedulerPlaceholderHttpTargetUri = "http://example.com/cloud-seed"
+const PlaceholderHttpTargetUri = "http://example.com/cloud-seed"
 
-func newTopicEventSource(scope *cdktf.TerraformStack, eventSource *module.EventSource) *google.PubsubTopic {
+func NewTopicEventSource(
+	scope *cdktf.TerraformStack,
+	eventSource *module.EventSource,
+	options *project.Config,
+) *google.PubsubTopic {
 	name := *eventSource.EventSpec.Gcp.Name
-	if eventSourceTopics[name] == nil {
+	if topics[name] == nil {
+		if eventSource.EventSpec.Gcp.MessageStoragePolicy == nil {
+			eventSource.EventSpec.Gcp.MessageStoragePolicy = &google.PubsubTopicMessageStoragePolicy{
+				AllowedPersistenceRegions: &[]*string{options.Cloud.Gcp.Provider.Region},
+			}
+		}
 		topic := google.NewPubsubTopic(*scope, &name, &eventSource.EventSpec.Gcp)
-		eventSourceTopics[name] = &topic
+		topics[name] = &topic
 	}
-	return eventSourceTopics[name]
+	return topics[name]
 }
 
-func newQueueEventSource(
+func NewQueueEventSource(
 	scope *cdktf.TerraformStack,
 	eventSource *module.EventSource,
 	options *project.Config,
 ) *google.CloudTasksQueue {
 	name := *eventSource.QueueSpec.Gcp.Name
-	if eventSourceQueues[name] == nil {
+	if queues[name] == nil {
 		if eventSource.QueueSpec.Gcp.Location == nil {
-			eventSource.QueueSpec.Gcp.Location = &options.Cloud.Gcp.Region
+			eventSource.QueueSpec.Gcp.Location = options.Cloud.Gcp.Provider.Region
 		}
 		queue := google.NewCloudTasksQueue(*scope, &name, &eventSource.QueueSpec.Gcp)
-		eventSourceQueues[name] = &queue
+		queues[name] = &queue
 	}
-	return eventSourceQueues[name]
+	return queues[name]
 }
 
-func newScheduleEventSource(
+func NewScheduleEventSource(
 	scope *cdktf.TerraformStack,
 	eventSource *module.EventSource,
 	options *project.Config,
 ) *google.CloudSchedulerJob {
 	if eventSource.ScheduleSpec.Gcp.Name == nil {
-		eventSource.ScheduleSpec.Gcp.Name = jsii.String("Scheduler" + strconv.Itoa(eventSourceSchedulesCount))
-		eventSourceSchedulesCount += 1
+		eventSource.ScheduleSpec.Gcp.Name = jsii.String("Scheduler" + strconv.Itoa(schedulesCount))
+		schedulesCount += 1
 	}
 	if eventSource.ScheduleSpec.Gcp.Region == nil {
-		eventSource.ScheduleSpec.Gcp.Region = &options.Cloud.Gcp.Region
+		eventSource.ScheduleSpec.Gcp.Region = options.Cloud.Gcp.Provider.Region
 	}
 	if eventSource.ScheduleSpec.Gcp.HttpTarget != nil {
 		if eventSource.ScheduleSpec.Gcp.HttpTarget.Uri == nil {
-			eventSource.ScheduleSpec.Gcp.HttpTarget.Uri = jsii.String(cloudSchedulerPlaceholderHttpTargetUri)
+			eventSource.ScheduleSpec.Gcp.HttpTarget.Uri = jsii.String(PlaceholderHttpTargetUri)
 		}
 	}
 	name := eventSource.ScheduleSpec.Gcp.Name

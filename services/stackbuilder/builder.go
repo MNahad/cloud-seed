@@ -7,24 +7,24 @@ import (
 	"github.com/mnahad/cloud-seed/services/stackbuilder/gcp"
 )
 
-func NewStack(
-	scope *cdktf.App,
-	id string,
-	environment *string,
-	manifests *[]module.Manifest,
-	config *project.Config,
-) cdktf.TerraformStack {
-	stack := gcp.NewGcpStack(scope, id, gcp.GcpStackConfig{
-		Environment: environment,
-		Options:     config,
-		Manifests:   manifests,
+type StackConfig struct {
+	Environment *string
+	Config      *project.Config
+	Manifests   []module.Manifest
+}
+
+func NewStack(scope *cdktf.App, id string, config *StackConfig) cdktf.TerraformStack {
+	stack := gcp.NewGcpStack(scope, id, &gcp.GcpStackConfig{
+		Environment: config.Environment,
+		Options:     config.Config,
+		Manifests:   config.Manifests,
 	})
-	if config.TfConfig.Backend.Gcs != (cdktf.GcsBackendProps{}) {
-		cdktf.NewGcsBackend(stack, &config.TfConfig.Backend.Gcs)
-	} else if config.TfConfig.Backend.S3 != (cdktf.S3BackendProps{}) {
-		cdktf.NewS3Backend(stack, &config.TfConfig.Backend.S3)
+	if config.Config.TfConfig.Backend.Gcs != (cdktf.GcsBackendProps{}) {
+		cdktf.NewGcsBackend(stack, &config.Config.TfConfig.Backend.Gcs)
+	} else if config.Config.TfConfig.Backend.S3 != (cdktf.S3BackendProps{}) {
+		cdktf.NewS3Backend(stack, &config.Config.TfConfig.Backend.S3)
 	} else {
-		cdktf.NewLocalBackend(stack, &config.TfConfig.Backend.Local)
+		cdktf.NewLocalBackend(stack, &config.Config.TfConfig.Backend.Local)
 	}
 	return stack
 }

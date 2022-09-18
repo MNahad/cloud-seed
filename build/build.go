@@ -25,7 +25,11 @@ func Build(env *string) (*project.Config, *cdktf.App) {
 		}
 	}
 	app := cdktf.NewApp(&cdktf.AppOptions{Outdir: &conf.BuildConfig.OutDir})
-	stackbuilder.NewStack(&app, "CloudSeed", env, &manifests, &conf)
+	stackbuilder.NewStack(
+		&app,
+		"CloudSeed",
+		&stackbuilder.StackConfig{Environment: env, Manifests: manifests, Config: &conf},
+	)
 	app.Synth()
 	return &conf, &app
 }
