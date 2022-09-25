@@ -56,23 +56,25 @@ func DetectConfig() (*ConfigFile, error) {
 type cloudConfig struct {
 	Cloud struct {
 		Gcp struct {
-			Provider google.GoogleProviderConfig `json:"provider"`
+			Provider   google.GoogleProviderConfig `json:"provider"`
+			Networking struct {
+				StaticIpNetwork struct {
+					AccessConnector google.VpcAccessConnectorConfig `json:"accessConnector"`
+					Address         google.ComputeAddressConfig     `json:"address"`
+					Network         google.ComputeNetworkConfig     `json:"network"`
+					Router          google.ComputeRouterConfig      `json:"router"`
+					RouterNat       google.ComputeRouterNatConfig   `json:"routerNat"`
+				} `json:"staticIpNetwork"`
+			} `json:"networking"`
 			Security struct {
-				RuntimeServiceAccount google.ServiceAccountConfig `json:"runtimeServiceAccount"`
+				RuntimeServiceAccount google.ServiceAccountConfig      `json:"runtimeServiceAccount"`
+				SecretManagerSecret   google.SecretManagerSecretConfig `json:"secretManagerSecret"`
 			} `json:"security"`
-			SourceCodeStorage struct {
-				Bucket google.StorageBucketConfig `json:"bucket"`
-			} `json:"sourceCodeStorage"`
-			SecretsManagement struct {
-				Secrets google.SecretManagerSecretConfig `json:"secrets"`
-			} `json:"secretsManagement"`
-			StaticIpNetwork struct {
-				Network   google.ComputeNetworkConfig     `json:"network"`
-				Router    google.ComputeRouterConfig      `json:"router"`
-				Nat       google.ComputeRouterNatConfig   `json:"nat"`
-				Ip        google.ComputeAddressConfig     `json:"ip"`
-				Connector google.VpcAccessConnectorConfig `json:"connector"`
-			} `json:"staticIpNetwork"`
+			Service struct {
+				SourceCodeStorage struct {
+					Bucket google.StorageBucketConfig `json:"bucket"`
+				} `json:"sourceCodeStorage"`
+			} `json:"service"`
 		} `json:"gcp"`
 	} `json:"cloud"`
 }
@@ -81,29 +83,29 @@ func (c *cloudConfig) merge(other *cloudConfig) {
 	if other.Cloud.Gcp.Provider != (google.GoogleProviderConfig{}) {
 		c.Cloud.Gcp.Provider = other.Cloud.Gcp.Provider
 	}
+	if other.Cloud.Gcp.Networking.StaticIpNetwork.AccessConnector != (google.VpcAccessConnectorConfig{}) {
+		c.Cloud.Gcp.Networking.StaticIpNetwork.AccessConnector = other.Cloud.Gcp.Networking.StaticIpNetwork.AccessConnector
+	}
+	if other.Cloud.Gcp.Networking.StaticIpNetwork.Address != (google.ComputeAddressConfig{}) {
+		c.Cloud.Gcp.Networking.StaticIpNetwork.Address = other.Cloud.Gcp.Networking.StaticIpNetwork.Address
+	}
+	if other.Cloud.Gcp.Networking.StaticIpNetwork.Network != (google.ComputeNetworkConfig{}) {
+		c.Cloud.Gcp.Networking.StaticIpNetwork.Network = other.Cloud.Gcp.Networking.StaticIpNetwork.Network
+	}
+	if other.Cloud.Gcp.Networking.StaticIpNetwork.Router != (google.ComputeRouterConfig{}) {
+		c.Cloud.Gcp.Networking.StaticIpNetwork.Router = other.Cloud.Gcp.Networking.StaticIpNetwork.Router
+	}
+	if other.Cloud.Gcp.Networking.StaticIpNetwork.RouterNat != (google.ComputeRouterNatConfig{}) {
+		c.Cloud.Gcp.Networking.StaticIpNetwork.RouterNat = other.Cloud.Gcp.Networking.StaticIpNetwork.RouterNat
+	}
 	if other.Cloud.Gcp.Security.RuntimeServiceAccount != (google.ServiceAccountConfig{}) {
 		c.Cloud.Gcp.Security.RuntimeServiceAccount = other.Cloud.Gcp.Security.RuntimeServiceAccount
 	}
-	if other.Cloud.Gcp.SourceCodeStorage.Bucket != (google.StorageBucketConfig{}) {
-		c.Cloud.Gcp.SourceCodeStorage.Bucket = other.Cloud.Gcp.SourceCodeStorage.Bucket
+	if other.Cloud.Gcp.Security.SecretManagerSecret != (google.SecretManagerSecretConfig{}) {
+		c.Cloud.Gcp.Security.SecretManagerSecret = other.Cloud.Gcp.Security.SecretManagerSecret
 	}
-	if other.Cloud.Gcp.SecretsManagement.Secrets != (google.SecretManagerSecretConfig{}) {
-		c.Cloud.Gcp.SecretsManagement.Secrets = other.Cloud.Gcp.SecretsManagement.Secrets
-	}
-	if other.Cloud.Gcp.StaticIpNetwork.Network != (google.ComputeNetworkConfig{}) {
-		c.Cloud.Gcp.StaticIpNetwork.Network = other.Cloud.Gcp.StaticIpNetwork.Network
-	}
-	if other.Cloud.Gcp.StaticIpNetwork.Router != (google.ComputeRouterConfig{}) {
-		c.Cloud.Gcp.StaticIpNetwork.Router = other.Cloud.Gcp.StaticIpNetwork.Router
-	}
-	if other.Cloud.Gcp.StaticIpNetwork.Nat != (google.ComputeRouterNatConfig{}) {
-		c.Cloud.Gcp.StaticIpNetwork.Nat = other.Cloud.Gcp.StaticIpNetwork.Nat
-	}
-	if other.Cloud.Gcp.StaticIpNetwork.Ip != (google.ComputeAddressConfig{}) {
-		c.Cloud.Gcp.StaticIpNetwork.Ip = other.Cloud.Gcp.StaticIpNetwork.Ip
-	}
-	if other.Cloud.Gcp.StaticIpNetwork.Connector != (google.VpcAccessConnectorConfig{}) {
-		c.Cloud.Gcp.StaticIpNetwork.Connector = other.Cloud.Gcp.StaticIpNetwork.Connector
+	if other.Cloud.Gcp.Service.SourceCodeStorage.Bucket != (google.StorageBucketConfig{}) {
+		c.Cloud.Gcp.Service.SourceCodeStorage.Bucket = other.Cloud.Gcp.Service.SourceCodeStorage.Bucket
 	}
 }
 

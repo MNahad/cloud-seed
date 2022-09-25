@@ -26,11 +26,16 @@ type GcpStackConfig struct {
 }
 
 func NewGcpStack(scope *cdktf.App, id string, config *GcpStackConfig) cdktf.TerraformStack {
-	support := supportInfrastructure{}
 	stack := cdktf.NewTerraformStack(*scope, &id)
 	google.NewGoogleProvider(stack, jsii.String("Google"), &config.Options.Cloud.Gcp.Provider)
+	var runtimeServiceAccountEmail *string
 	if len(config.Manifests) > 0 {
-		support.generateInfrastructure(&stack, kindCommon, config.Options)
+		runtimeServiceAccountEmail = security.GenerateRuntimeServiceAccount(&stack, config.Options)
+		for i := range config.Options.EnvironmentConfig.SecretVariableNames {
+			secretId := config.Options.EnvironmentConfig.SecretVariableNames[i]
+			secret := security.NewSecretManagerSecret(&stack, &secretId, config.Options)
+			security.NewServiceAccountSecretManagerSecretAccessor(&stack, &secretId, secret, runtimeServiceAccountEmail)
+		}
 	}
 	var modules modulesCollection
 	predicates := []func(*module.Module) bool{
@@ -50,24 +55,20 @@ func NewGcpStack(scope *cdktf.App, id string, config *GcpStackConfig) cdktf.Terr
 		modules.workflow = append(modules.workflow, workflowModules...)
 	}
 	functionModules := modules.function
-	if support.function == (supportInfrastructure{}.function) && len(functionModules) > 0 {
-		support.generateInfrastructure(&stack, kindFunction, config.Options)
-	}
 	serviceEndpoints := make(orchestration.ServiceEndpoints, len(functionModules))
 	for i := range functionModules {
 		functionModule := functionModules[i]
 		functionConstruct := *function.NewFunction(
 			&stack,
 			functionModule,
-			support.function.archiveBucket,
-			support.getRuntimeServiceAccountEmail(),
+			runtimeServiceAccountEmail,
 			config.Options,
 		)
 		security.NewServiceAccountCloudFunctionInvoker(
 			&stack,
 			&functionConstruct,
 			jsii.String("RuntimeServiceAccount"),
-			support.getRuntimeServiceAccountEmail(),
+			runtimeServiceAccountEmail,
 			functionModule,
 		)
 		if functionModule.EventSource.EventSpec != (module.EventSource{}.EventSpec) {
@@ -89,7 +90,7 @@ func NewGcpStack(scope *cdktf.App, id string, config *GcpStackConfig) cdktf.Terr
 				eventTrigger.TriggerRegion = config.Options.Cloud.Gcp.Provider.Region
 			}
 			if eventTrigger.ServiceAccountEmail == nil {
-				eventTrigger.ServiceAccountEmail = support.getRuntimeServiceAccountEmail()
+				eventTrigger.ServiceAccountEmail = runtimeServiceAccountEmail
 			}
 			functionConstruct.PutEventTrigger(eventTrigger)
 		} else if functionModule.EventSource.QueueSpec != (module.EventSource{}.QueueSpec) {
@@ -110,7 +111,7 @@ func NewGcpStack(scope *cdktf.App, id string, config *GcpStackConfig) cdktf.Terr
 				}
 				if httpTarget.OidcToken == nil {
 					httpTarget.OidcToken = &google.CloudSchedulerJobHttpTargetOidcToken{
-						ServiceAccountEmail: support.getRuntimeServiceAccountEmail(),
+						ServiceAccountEmail: runtimeServiceAccountEmail,
 						Audience:            functionConstruct.ServiceConfig().Uri(),
 					}
 				}
@@ -131,7 +132,7 @@ func NewGcpStack(scope *cdktf.App, id string, config *GcpStackConfig) cdktf.Terr
 			}
 		}
 		if functionModule.Networking.Egress.StaticIp {
-			connector := networking.GenerateVpcAccessConnector(&stack, config.Options)
+			connector := networking.NewVpcAccessConnector(&stack, config.Options)
 			serviceConfig := functionConstruct.ServiceConfigInput()
 			if serviceConfig == nil {
 				serviceConfig = &google.Cloudfunctions2FunctionServiceConfig{}
@@ -147,126 +148,15 @@ func NewGcpStack(scope *cdktf.App, id string, config *GcpStackConfig) cdktf.Terr
 		serviceEndpoints[functionModule.Name] = orchestration.Endpoint{Uri: *functionConstruct.ServiceConfig().Uri()}
 	}
 	if len(config.Manifests) > 0 && len(config.Options.OrchestrationConfig.Gcp.FilePath) > 0 {
-		orchestration.NewWorkflow(&stack, nil, nil, support.getRuntimeServiceAccountEmail(), config.Options)
+		orchestration.NewWorkflow(&stack, nil, nil, runtimeServiceAccountEmail, config.Options)
 	} else if workflowModules := modules.workflow; len(workflowModules) > 0 {
 		orchestration.NewWorkflow(
 			&stack,
 			workflowModules,
 			&serviceEndpoints,
-			support.getRuntimeServiceAccountEmail(),
+			runtimeServiceAccountEmail,
 			config.Options,
 		)
 	}
 	return stack
-}
-
-type resourceKind uint
-
-const (
-	kindCommon resourceKind = iota
-	kindFunction
-	kindContainer
-)
-
-type supportInfrastructure struct {
-	common struct {
-		runtimeServiceAccount        *google.ServiceAccount
-		computeDefaultServiceAccount *google.DataGoogleComputeDefaultServiceAccount
-		secrets                      []*google.SecretManagerSecret
-		secretsIamMembers            []*google.SecretManagerSecretIamMember
-	}
-	function struct {
-		archiveBucket *google.StorageBucket
-	}
-	container any
-}
-
-func (s *supportInfrastructure) generateInfrastructure(
-	scope *cdktf.TerraformStack,
-	kind resourceKind,
-	options *project.Config,
-) {
-	switch kind {
-	case kindCommon:
-		{
-			if options.Cloud.Gcp.Security.RuntimeServiceAccount != (google.ServiceAccountConfig{}) {
-				serviceAccount := google.NewServiceAccount(
-					*scope,
-					options.Cloud.Gcp.Security.RuntimeServiceAccount.AccountId,
-					&options.Cloud.Gcp.Security.RuntimeServiceAccount,
-				)
-				s.common.runtimeServiceAccount = &serviceAccount
-			} else {
-				computeDefaultServiceAccount := google.NewDataGoogleComputeDefaultServiceAccount(
-					*scope,
-					jsii.String("ComputeDefaultServiceAccount"),
-					&google.DataGoogleComputeDefaultServiceAccountConfig{},
-				)
-				s.common.computeDefaultServiceAccount = &computeDefaultServiceAccount
-			}
-			s.common.secrets = make(
-				[]*google.SecretManagerSecret,
-				len(options.EnvironmentConfig.SecretVariableNames),
-			)
-			s.common.secretsIamMembers = make(
-				[]*google.SecretManagerSecretIamMember,
-				len(options.EnvironmentConfig.SecretVariableNames),
-			)
-			for i := range options.EnvironmentConfig.SecretVariableNames {
-				secretConfig := new(google.SecretManagerSecretConfig)
-				(*secretConfig) = options.Cloud.Gcp.SecretsManagement.Secrets
-				if secretConfig.SecretId == nil {
-					secretConfig.SecretId = jsii.String(options.EnvironmentConfig.SecretVariableNames[i])
-				}
-				if secretConfig.Replication == nil {
-					secretConfig.Replication = &google.SecretManagerSecretReplication{
-						UserManaged: &google.SecretManagerSecretReplicationUserManaged{
-							Replicas: []google.SecretManagerSecretReplicationUserManagedReplicas{
-								{Location: options.Cloud.Gcp.Provider.Region},
-							},
-						},
-					}
-				}
-				secret := google.NewSecretManagerSecret(*scope, secretConfig.SecretId, secretConfig)
-				s.common.secrets = append(s.common.secrets, &secret)
-				secretIamMember := google.NewSecretManagerSecretIamMember(
-					*scope,
-					jsii.String(*secretConfig.SecretId+"-iam-member"),
-					&google.SecretManagerSecretIamMemberConfig{
-						SecretId: secret.SecretId(),
-						Member:   jsii.String("serviceAccount:" + *s.getRuntimeServiceAccountEmail()),
-						Role:     jsii.String("roles/secretmanager.secretAccessor"),
-					},
-				)
-				s.common.secretsIamMembers = append(s.common.secretsIamMembers, &secretIamMember)
-			}
-		}
-	case kindFunction:
-		{
-			archiveBucketConfig := new(google.StorageBucketConfig)
-			(*archiveBucketConfig) = options.Cloud.Gcp.SourceCodeStorage.Bucket
-			if archiveBucketConfig.Name == nil {
-				archiveBucketConfig.Name = jsii.String(*options.Cloud.Gcp.Provider.Project + "-functions-src")
-			}
-			if archiveBucketConfig.Location == nil {
-				archiveBucketConfig.Location = options.Cloud.Gcp.Provider.Region
-			}
-			if archiveBucketConfig.UniformBucketLevelAccess == nil {
-				archiveBucketConfig.UniformBucketLevelAccess = jsii.Bool(true)
-			}
-			archiveBucket := google.NewStorageBucket(*scope, jsii.String("ArchiveBucket"), archiveBucketConfig)
-			s.function.archiveBucket = &archiveBucket
-		}
-	case kindContainer:
-	}
-}
-
-func (s *supportInfrastructure) getRuntimeServiceAccountEmail() *string {
-	if s.common.runtimeServiceAccount != nil {
-		return (*s.common.runtimeServiceAccount).Email()
-	} else if s.common.computeDefaultServiceAccount != nil {
-		return (*s.common.computeDefaultServiceAccount).Email()
-	} else {
-		return nil
-	}
 }

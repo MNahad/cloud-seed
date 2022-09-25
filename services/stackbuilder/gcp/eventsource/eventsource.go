@@ -10,11 +10,11 @@ import (
 	"github.com/mnahad/cloud-seed/services/config/project"
 )
 
+const PlaceholderHttpTargetUri = "http://example.com/cloud-seed"
+
 var topics = make(map[string]*google.PubsubTopic)
 var queues = make(map[string]*google.CloudTasksQueue)
-var schedulesCount int
-
-const PlaceholderHttpTargetUri = "http://example.com/cloud-seed"
+var schedulesCount uint64
 
 func NewTopicEventSource(
 	scope *cdktf.TerraformStack,
@@ -56,7 +56,7 @@ func NewScheduleEventSource(
 	options *project.Config,
 ) *google.CloudSchedulerJob {
 	if eventSource.ScheduleSpec.Gcp.Name == nil {
-		eventSource.ScheduleSpec.Gcp.Name = jsii.String("Scheduler" + strconv.Itoa(schedulesCount))
+		eventSource.ScheduleSpec.Gcp.Name = jsii.String("Scheduler" + strconv.FormatUint(schedulesCount, 10))
 		schedulesCount += 1
 	}
 	if eventSource.ScheduleSpec.Gcp.Region == nil {

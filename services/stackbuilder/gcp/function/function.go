@@ -11,13 +11,17 @@ import (
 	"github.com/mnahad/cloud-seed/services/config/project"
 )
 
+var archiveBucket *google.StorageBucket
+
 func NewFunction(
 	scope *cdktf.TerraformStack,
 	config *module.Module,
-	archiveBucket *google.StorageBucket,
 	runtimeServiceAccountEmail *string,
 	options *project.Config,
 ) *google.Cloudfunctions2Function {
+	if archiveBucket == nil {
+		archiveBucket = newArchiveBucket(scope, options)
+	}
 	archivePath, err := filepath.Abs(filepath.Join(
 		options.BuildConfig.OutDir,
 		gcpArtefactGenerator.GetArtefactPrefix(gcpArtefactGenerator.FunctionArtefact),
@@ -92,4 +96,20 @@ func NewFunction(
 	}
 	function := google.NewCloudfunctions2Function(*scope, &config.Name, functionConfig)
 	return &function
+}
+
+func newArchiveBucket(scope *cdktf.TerraformStack, options *project.Config) *google.StorageBucket {
+	archiveBucketConfig := new(google.StorageBucketConfig)
+	(*archiveBucketConfig) = options.Cloud.Gcp.Service.SourceCodeStorage.Bucket
+	if archiveBucketConfig.Name == nil {
+		archiveBucketConfig.Name = jsii.String(*options.Cloud.Gcp.Provider.Project + "-functions-sources")
+	}
+	if archiveBucketConfig.Location == nil {
+		archiveBucketConfig.Location = options.Cloud.Gcp.Provider.Region
+	}
+	if archiveBucketConfig.UniformBucketLevelAccess == nil {
+		archiveBucketConfig.UniformBucketLevelAccess = jsii.Bool(true)
+	}
+	archiveBucket := google.NewStorageBucket(*scope, jsii.String("ArchiveBucket"), archiveBucketConfig)
+	return &archiveBucket
 }
