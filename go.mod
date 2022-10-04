@@ -1,17 +1,18 @@
 module github.com/mnahad/cloud-seed
 
-go 1.18
+go 1.19
 
 require (
-	github.com/aws/jsii-runtime-go v1.66.0
-	github.com/hashicorp/cdktf-provider-google-go/google/v2 v2.0.13
-	github.com/hashicorp/terraform-cdk-go/cdktf v0.12.2
+	github.com/aws/jsii-runtime-go v1.69.0
+	github.com/hashicorp/cdktf-provider-google-go/google/v2 v2.0.46
+	github.com/hashicorp/cdktf-provider-null-go/null/v2 v2.0.74
+	github.com/hashicorp/terraform-cdk-go/cdktf v0.12.3
 	github.com/spf13/cobra v1.5.0
 )
 
 require (
 	github.com/Masterminds/semver/v3 v3.1.1 // indirect
-	github.com/aws/constructs-go/constructs/v10 v10.1.92 // indirect
+	github.com/aws/constructs-go/constructs/v10 v10.1.120 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/mattn/go-isatty v0.0.16 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
