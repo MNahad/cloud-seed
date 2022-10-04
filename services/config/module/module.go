@@ -88,6 +88,10 @@ type Module struct {
 
 type EventSource struct {
 	EventSpec struct {
+		Gcp google.EventarcTriggerConfig
+		Aws any
+	}
+	TopicSpec struct {
 		Gcp google.PubsubTopicConfig
 		Aws any
 	}
@@ -125,6 +129,15 @@ func (c *EventSource) UnmarshalJSON(b []byte) error {
 				err = json.Unmarshal(s.AwsSpec, &c.EventSpec.Aws)
 			}
 		}
+	case "topic":
+		{
+			if err == nil && s.GcpSpec != nil {
+				err = json.Unmarshal(s.GcpSpec, &c.TopicSpec.Gcp)
+			}
+			if err == nil && s.AwsSpec != nil {
+				err = json.Unmarshal(s.AwsSpec, &c.TopicSpec.Aws)
+			}
+		}
 	case "queue":
 		{
 			if err == nil && s.GcpSpec != nil {
@@ -159,6 +172,44 @@ type Service struct {
 		Gcp google.CloudRunServiceConfig `json:"gcp"`
 		Aws any                          `json:"aws"`
 	} `json:"container"`
+}
+
+func (c *Service) UnmarshalJSON(b []byte) error {
+	if b == nil {
+		return nil
+	}
+	type source struct {
+		Kind    string          `json:"kind"`
+		GcpSpec json.RawMessage `json:"gcp"`
+		AwsSpec json.RawMessage `json:"aws"`
+	}
+	s := new(source)
+	var err error
+	if err = json.Unmarshal(b, s); err != nil {
+		return err
+	}
+	switch s.Kind {
+	case "function":
+		{
+			if err == nil && s.GcpSpec != nil {
+				err = json.Unmarshal(s.GcpSpec, &c.Function.Gcp)
+			}
+			if err == nil && s.AwsSpec != nil {
+				err = json.Unmarshal(s.AwsSpec, &c.Function.Aws)
+			}
+		}
+	case "container":
+		{
+			if err == nil && s.GcpSpec != nil {
+				err = json.Unmarshal(s.GcpSpec, &c.Container.Gcp)
+			}
+			if err == nil && s.AwsSpec != nil {
+				err = json.Unmarshal(s.AwsSpec, &c.Container.Aws)
+			}
+		}
+	default:
+	}
+	return err
 }
 
 type Networking struct {

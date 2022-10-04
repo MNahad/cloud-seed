@@ -14,7 +14,6 @@ func NewWorkflow(
 	scope *cdktf.TerraformStack,
 	modules []*module.Module,
 	endpoints *ServiceEndpoints,
-	runtimeServiceAccountEmail *string,
 	options *project.Config,
 ) *google.WorkflowsWorkflow {
 	var sourceContents *string
@@ -38,9 +37,6 @@ func NewWorkflow(
 	}
 	if workflowConfig.Region == nil {
 		workflowConfig.Region = options.Cloud.Gcp.Provider.Region
-	}
-	if workflowConfig.ServiceAccount == nil {
-		workflowConfig.ServiceAccount = runtimeServiceAccountEmail
 	}
 	workflow := google.NewWorkflowsWorkflow(*scope, jsii.String("Workflow"), workflowConfig)
 	return &workflow

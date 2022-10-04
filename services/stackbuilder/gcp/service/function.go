@@ -1,4 +1,4 @@
-package function
+package service
 
 import (
 	"path/filepath"
@@ -16,7 +16,6 @@ var archiveBucket *google.StorageBucket
 func NewFunction(
 	scope *cdktf.TerraformStack,
 	config *module.Module,
-	runtimeServiceAccountEmail *string,
 	options *project.Config,
 ) *google.Cloudfunctions2Function {
 	if archiveBucket == nil {
@@ -35,9 +34,7 @@ func NewFunction(
 		jsii.String(config.Name+"-sourceArchive"),
 		&google.StorageBucketObjectConfig{
 			Bucket: (*archiveBucket).Name(),
-			Name: jsii.String(
-				config.Name + "-source-" + *cdktf.Fn_Urlencode(cdktf.Fn_Filebase64sha512(&archivePath)) + ".zip",
-			),
+			Name:   jsii.String(config.Name + ":" + *cdktf.Fn_Urlencode(cdktf.Fn_Filebase64sha512(&archivePath)) + ".zip"),
 			Source: &archivePath,
 		},
 	)
@@ -51,21 +48,6 @@ func NewFunction(
 	}
 	if functionConfig.BuildConfig == nil {
 		functionConfig.BuildConfig = &google.Cloudfunctions2FunctionBuildConfig{}
-	}
-	if functionConfig.ServiceConfig == nil {
-		functionConfig.ServiceConfig = &google.Cloudfunctions2FunctionServiceConfig{}
-	}
-	if functionConfig.ServiceConfig.AvailableMemory == nil {
-		functionConfig.ServiceConfig.AvailableMemory = jsii.String("256M")
-	}
-	if functionConfig.ServiceConfig.MaxInstanceCount == nil {
-		functionConfig.ServiceConfig.MaxInstanceCount = jsii.Number(100)
-	}
-	if functionConfig.ServiceConfig.TimeoutSeconds == nil {
-		functionConfig.ServiceConfig.TimeoutSeconds = jsii.Number(60)
-	}
-	if functionConfig.ServiceConfig.ServiceAccountEmail == nil {
-		functionConfig.ServiceConfig.ServiceAccountEmail = runtimeServiceAccountEmail
 	}
 	if functionConfig.BuildConfig.EntryPoint == nil {
 		functionConfig.BuildConfig.EntryPoint = &config.Name
@@ -83,6 +65,9 @@ func NewFunction(
 	if functionConfig.BuildConfig.Source.StorageSource.Object == nil {
 		functionConfig.BuildConfig.Source.StorageSource.Object = archiveObject.Name()
 	}
+	if functionConfig.ServiceConfig == nil {
+		functionConfig.ServiceConfig = &google.Cloudfunctions2FunctionServiceConfig{}
+	}
 	if functionConfig.ServiceConfig.EnvironmentVariables == nil {
 		envVars := make(map[string]*string, len(options.EnvironmentConfig.RuntimeEnvironmentVariables))
 		functionConfig.ServiceConfig.EnvironmentVariables = &envVars
@@ -94,7 +79,23 @@ func NewFunction(
 			)
 		}
 	}
-	function := google.NewCloudfunctions2Function(*scope, &config.Name, functionConfig)
+	if functionConfig.ServiceConfig.AvailableMemory == nil {
+		functionConfig.ServiceConfig.AvailableMemory = jsii.String("256M")
+	}
+	if functionConfig.ServiceConfig.MaxInstanceCount == nil {
+		functionConfig.ServiceConfig.MaxInstanceCount = jsii.Number(100)
+	}
+	if functionConfig.ServiceConfig.TimeoutSeconds == nil {
+		functionConfig.ServiceConfig.TimeoutSeconds = jsii.Number(60)
+	}
+	if functionConfig.Lifecycle == nil {
+		functionConfig.Lifecycle = &cdktf.TerraformResourceLifecycle{}
+	}
+	if functionConfig.Lifecycle.IgnoreChanges == nil {
+		functionConfig.Lifecycle.IgnoreChanges =
+			&[]*string{jsii.String("build_config[0].source[0].storage_source[0].generation")}
+	}
+	function := google.NewCloudfunctions2Function(*scope, functionConfig.Name, functionConfig)
 	return &function
 }
 

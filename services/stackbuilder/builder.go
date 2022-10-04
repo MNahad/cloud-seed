@@ -1,6 +1,8 @@
 package stackbuilder
 
 import (
+	"github.com/aws/jsii-runtime-go"
+	"github.com/hashicorp/cdktf-provider-null-go/null/v2"
 	"github.com/hashicorp/terraform-cdk-go/cdktf"
 	"github.com/mnahad/cloud-seed/services/config/module"
 	"github.com/mnahad/cloud-seed/services/config/project"
@@ -14,7 +16,9 @@ type StackConfig struct {
 }
 
 func NewStack(scope *cdktf.App, id string, config *StackConfig) cdktf.TerraformStack {
-	stack := gcp.NewGcpStack(scope, id, &gcp.GcpStackConfig{
+	stack := cdktf.NewTerraformStack(*scope, &id)
+	null.NewNullProvider(stack, jsii.String("Null"), &null.NullProviderConfig{})
+	gcp.NewGcpStack(&stack, id, &gcp.GcpStackConfig{
 		Environment: config.Environment,
 		Options:     config.Config,
 		Manifests:   config.Manifests,

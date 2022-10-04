@@ -16,16 +16,9 @@ func NewAllUsersCloudFunctionInvoker(
 	scope *cdktf.TerraformStack,
 	function *google.Cloudfunctions2Function,
 	module *module.Module,
+	options *project.Config,
 ) *google.CloudRunServiceIamMember {
-	iamMember := google.NewCloudRunServiceIamMember(
-		*scope,
-		jsii.String(module.Name+"AllUsersInvoker"),
-		&google.CloudRunServiceIamMemberConfig{
-			Service: (*function).ServiceConfig().Service(),
-			Member:  jsii.String("allUsers"),
-			Role:    jsii.String("roles/run.invoker"),
-		})
-	return &iamMember
+	return NewAllUsersCloudRunInvoker(scope, (*function).ServiceConfig().Service(), module, options)
 }
 
 func NewServiceAccountCloudFunctionInvoker(
@@ -34,14 +27,52 @@ func NewServiceAccountCloudFunctionInvoker(
 	serviceAccountName *string,
 	serviceAccountEmail *string,
 	module *module.Module,
+	options *project.Config,
+) *google.CloudRunServiceIamMember {
+	return NewServiceAccountCloudRunInvoker(
+		scope,
+		(*function).ServiceConfig().Service(),
+		serviceAccountName,
+		serviceAccountEmail,
+		module,
+		options,
+	)
+}
+
+func NewServiceAccountCloudRunInvoker(
+	scope *cdktf.TerraformStack,
+	service *string,
+	serviceAccountName *string,
+	serviceAccountEmail *string,
+	module *module.Module,
+	options *project.Config,
 ) *google.CloudRunServiceIamMember {
 	iamMember := google.NewCloudRunServiceIamMember(
 		*scope,
 		jsii.String(module.Name+*serviceAccountName+"Invoker"),
 		&google.CloudRunServiceIamMemberConfig{
-			Service: (*function).ServiceConfig().Service(),
-			Member:  jsii.String("serviceAccount:" + *serviceAccountEmail),
-			Role:    jsii.String("roles/run.invoker"),
+			Service:  service,
+			Member:   jsii.String("serviceAccount:" + *serviceAccountEmail),
+			Role:     jsii.String("roles/run.invoker"),
+			Location: options.Cloud.Gcp.Provider.Region,
+		})
+	return &iamMember
+}
+
+func NewAllUsersCloudRunInvoker(
+	scope *cdktf.TerraformStack,
+	service *string,
+	module *module.Module,
+	options *project.Config,
+) *google.CloudRunServiceIamMember {
+	iamMember := google.NewCloudRunServiceIamMember(
+		*scope,
+		jsii.String(module.Name+"AllUsersInvoker"),
+		&google.CloudRunServiceIamMemberConfig{
+			Service:  service,
+			Member:   jsii.String("allUsers"),
+			Role:     jsii.String("roles/run.invoker"),
+			Location: options.Cloud.Gcp.Provider.Region,
 		})
 	return &iamMember
 }
@@ -80,7 +111,7 @@ func NewSecretManagerSecret(
 		if secretConfig.Replication == nil {
 			secretConfig.Replication = &google.SecretManagerSecretReplication{
 				UserManaged: &google.SecretManagerSecretReplicationUserManaged{
-					Replicas: []google.SecretManagerSecretReplicationUserManagedReplicas{
+					Replicas: &[]google.SecretManagerSecretReplicationUserManagedReplicas{
 						{Location: options.Cloud.Gcp.Provider.Region},
 					},
 				},
@@ -96,11 +127,12 @@ func NewServiceAccountSecretManagerSecretAccessor(
 	scope *cdktf.TerraformStack,
 	secretId *string,
 	secret *google.SecretManagerSecret,
+	serviceAccountName *string,
 	serviceAccountEmail *string,
 ) *google.SecretManagerSecretIamMember {
 	secretIamMember := google.NewSecretManagerSecretIamMember(
 		*scope,
-		jsii.String(*secretId+"ServiceAccountSecretAccessor"),
+		jsii.String(*secretId+*serviceAccountName+"SecretAccessor"),
 		&google.SecretManagerSecretIamMemberConfig{
 			SecretId: (*secret).SecretId(),
 			Member:   jsii.String("serviceAccount:" + *serviceAccountEmail),

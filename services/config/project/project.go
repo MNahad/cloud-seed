@@ -72,7 +72,9 @@ type cloudConfig struct {
 			} `json:"security"`
 			Service struct {
 				SourceCodeStorage struct {
-					Bucket google.StorageBucketConfig `json:"bucket"`
+					Bucket                     google.StorageBucketConfig              `json:"bucket"`
+					ArtifactRegistryRepository google.ArtifactRegistryRepositoryConfig `json:"artifactRegistryRepository"`
+					StagingBucket              google.StorageBucketConfig              `json:"stagingBucket"`
 				} `json:"sourceCodeStorage"`
 			} `json:"service"`
 		} `json:"gcp"`
@@ -106,6 +108,13 @@ func (c *cloudConfig) merge(other *cloudConfig) {
 	}
 	if other.Cloud.Gcp.Service.SourceCodeStorage.Bucket != (google.StorageBucketConfig{}) {
 		c.Cloud.Gcp.Service.SourceCodeStorage.Bucket = other.Cloud.Gcp.Service.SourceCodeStorage.Bucket
+	}
+	if other.Cloud.Gcp.Service.SourceCodeStorage.ArtifactRegistryRepository != (google.ArtifactRegistryRepositoryConfig{}) {
+		c.Cloud.Gcp.Service.SourceCodeStorage.ArtifactRegistryRepository =
+			other.Cloud.Gcp.Service.SourceCodeStorage.ArtifactRegistryRepository
+	}
+	if other.Cloud.Gcp.Service.SourceCodeStorage.StagingBucket != (google.StorageBucketConfig{}) {
+		c.Cloud.Gcp.Service.SourceCodeStorage.StagingBucket = other.Cloud.Gcp.Service.SourceCodeStorage.StagingBucket
 	}
 }
 
