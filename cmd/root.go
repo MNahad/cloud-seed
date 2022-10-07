@@ -10,7 +10,7 @@ import (
 var rootCmd = &cobra.Command{
 	Use:     "cloud-seed",
 	Aliases: []string{"seed"},
-	Short:   "Deploy serverless apps without worrying about GCP or AWS infrastructure management",
+	Short:   "Deploy serverless apps that target multi-cloud with ease",
 	Long:    "Cloud Seed is a Terraform multi-cloud configuration generator for serverless apps",
 }
 

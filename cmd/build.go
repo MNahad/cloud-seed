@@ -5,18 +5,20 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var env *string
+var env string
+var dir string
 
 var buildCmd = &cobra.Command{
 	Use:   "build",
-	Short: "Build the application",
+	Short: "Build the IaC",
 	Long:  "Package the code and synthesise the infrastructure",
 	Run: func(cmd *cobra.Command, args []string) {
-		build.Build(env)
+		build.Build(env, dir)
 	},
 }
 
 func init() {
-	env = buildCmd.Flags().String("environment", "", "Set the environment")
-	buildCmd.MarkFlagRequired("environment")
+	flags := buildCmd.Flags()
+	flags.StringVarP(&env, "environment", "e", "", "Set an environment")
+	flags.StringVarP(&dir, "project-dir", "d", "", "Select a project directory")
 }

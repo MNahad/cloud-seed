@@ -45,6 +45,16 @@ func NewRunService(scope *cdktf.TerraformStack, config *module.Module, options *
 	if runConfig.Template == nil {
 		runConfig.Template = &google.CloudRunServiceTemplate{}
 	}
+	if runConfig.Template.Metadata == nil {
+		runConfig.Template.Metadata = &google.CloudRunServiceTemplateMetadata{}
+	}
+	if runConfig.Template.Metadata.Labels == nil {
+		labels := make(map[string]*string, 1)
+		runConfig.Template.Metadata.Labels = &labels
+	}
+	if _, ok := (*runConfig.Template.Metadata.Labels)["run.googleapis.com/startupProbeType"]; !ok {
+		(*runConfig.Template.Metadata.Labels)["run.googleapis.com/startupProbeType"] = jsii.String("Default")
+	}
 	if runConfig.Template.Spec == nil {
 		runConfig.Template.Spec = &google.CloudRunServiceTemplateSpec{}
 	}
@@ -93,7 +103,6 @@ func NewRunService(scope *cdktf.TerraformStack, config *module.Module, options *
 	if runConfig.Lifecycle.IgnoreChanges == nil {
 		runConfig.Lifecycle.IgnoreChanges = &[]*string{
 			jsii.String("metadata[0].annotations[\"run.googleapis.com/operation-id\"]"),
-			jsii.String("template[0].metadata[0].labels[\"run.googleapis.com/startupProbeType\"]"),
 		}
 	}
 	if runConfig.DependsOn == nil {
@@ -127,7 +136,7 @@ func newStagingBucket(scope *cdktf.TerraformStack, options *project.Config) *goo
 	stagingBucketConfig := new(google.StorageBucketConfig)
 	(*stagingBucketConfig) = options.Cloud.Gcp.Service.SourceCodeStorage.StagingBucket
 	if stagingBucketConfig.Name == nil {
-		stagingBucketConfig.Name = jsii.String(*options.Cloud.Gcp.Provider.Project + "_cloudbuild")
+		stagingBucketConfig.Name = jsii.String(*options.Cloud.Gcp.Provider.Project + "-build")
 	}
 	if stagingBucketConfig.Location == nil {
 		stagingBucketConfig.Location = options.Cloud.Gcp.Provider.Region

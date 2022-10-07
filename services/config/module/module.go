@@ -215,19 +215,44 @@ func (c *Service) UnmarshalJSON(b []byte) error {
 type Networking struct {
 	Internal bool `json:"internal"`
 	Ingress  struct {
-		Gateway []struct {
-			Path       string `json:"path"`
-			Operations []struct {
-				Verb      string `json:"verb"`
-				Responses []struct {
-					Code string `json:"code"`
+		Gateway struct {
+			Paths map[string]map[string]struct {
+				Parameters []struct {
+					Name     string `json:"name"`
+					In       string `json:"in"`
+					Required bool   `json:"required"`
+					gatewayContent
+				} `json:"parameters"`
+				RequestBody struct {
+					gatewayContent
+				} `json:"requestBody"`
+				Responses map[string]struct {
+					Description string `json:"description"`
+					Headers     map[string]struct {
+						gatewayContent
+					} `json:"headers"`
+					gatewayContent
 				} `json:"responses"`
-			} `json:"operations"`
+				Security []map[string][]string `json:"security"`
+			} `json:"paths"`
+			Components struct {
+				SecuritySchemes map[string]struct {
+					Type string `json:"type"`
+					Name string `json:"name"`
+					In   string `json:"in"`
+				} `json:"securitySchemes"`
+			} `json:"components"`
 		} `json:"gateway"`
 	} `json:"ingress"`
 	Egress struct {
 		StaticIp bool `json:"staticIp"`
 	} `json:"egress"`
+}
+
+type gatewayContent struct {
+	Content map[string]struct {
+		Schema map[string]any `json:"schema"`
+	} `json:"content"`
 }
 
 type Security struct {

@@ -3,6 +3,7 @@ package gcp
 import (
 	"github.com/aws/jsii-runtime-go"
 	"github.com/hashicorp/cdktf-provider-google-go/google/v2"
+	"github.com/hashicorp/cdktf-provider-googlebeta-go/googlebeta/v2"
 	"github.com/hashicorp/terraform-cdk-go/cdktf"
 	"github.com/mnahad/cloud-seed/services/config/module"
 	"github.com/mnahad/cloud-seed/services/config/project"
@@ -16,6 +17,7 @@ import (
 type modulesCollection struct {
 	function  []*module.Module
 	container []*module.Module
+	gateway   []*module.Module
 	workflow  []*module.Module
 }
 
@@ -27,9 +29,14 @@ type GcpStackConfig struct {
 
 func NewGcpStack(stack *cdktf.TerraformStack, id string, config *GcpStackConfig) cdktf.TerraformStack {
 	google.NewGoogleProvider(*stack, jsii.String("Google"), &config.Options.Cloud.Gcp.Provider)
-	var runtimeServiceAccountEmail string
+	betaProvider := googlebeta.NewGoogleBetaProvider(
+		*stack,
+		jsii.String("GoogleBeta"),
+		&config.Options.Cloud.Gcp.BetaProvider,
+	)
+	var runtimeServiceAccount *google.ServiceAccount
 	if len(config.Manifests) > 0 {
-		runtimeServiceAccountEmail = *security.GenerateRuntimeServiceAccount(stack, config.Options)
+		runtimeServiceAccount = security.NewRuntimeServiceAccount(stack, config.Options)
 		for i := range config.Options.EnvironmentConfig.SecretVariableNames {
 			secretId := config.Options.EnvironmentConfig.SecretVariableNames[i]
 			secret := security.NewSecretManagerSecret(stack, &secretId, config.Options)
@@ -38,7 +45,7 @@ func NewGcpStack(stack *cdktf.TerraformStack, id string, config *GcpStackConfig)
 				&secretId,
 				secret,
 				jsii.String("RuntimeServiceAccount"),
-				&runtimeServiceAccountEmail,
+				(*runtimeServiceAccount).Email(),
 			)
 		}
 	}
@@ -51,6 +58,9 @@ func NewGcpStack(stack *cdktf.TerraformStack, id string, config *GcpStackConfig)
 			return m.Service.Container.Gcp != (module.Service{}.Container.Gcp)
 		},
 		func(m *module.Module) bool {
+			return networking.IsGateway(&m.Networking)
+		},
+		func(m *module.Module) bool {
 			return orchestration.IsWorkflow(&m.Orchestration)
 		},
 	}
@@ -59,11 +69,12 @@ func NewGcpStack(stack *cdktf.TerraformStack, id string, config *GcpStackConfig)
 		results := manifest.FilterModules(predicates)
 		modules.function = append(modules.function, results[0]...)
 		modules.container = append(modules.container, results[1]...)
-		modules.workflow = append(modules.workflow, results[2]...)
+		modules.gateway = append(modules.gateway, results[2]...)
+		modules.workflow = append(modules.workflow, results[3]...)
 	}
 	functionModules := modules.function
 	containerModules := modules.container
-	serviceEndpoints := make(orchestration.ServiceEndpoints, len(functionModules)+len(containerModules))
+	serviceEndpoints := make(service.Endpoints, len(functionModules)+len(containerModules))
 	for i := range functionModules {
 		functionModule := functionModules[i]
 		function := *service.NewFunction(
@@ -73,14 +84,14 @@ func NewGcpStack(stack *cdktf.TerraformStack, id string, config *GcpStackConfig)
 		)
 		if function.ServiceConfig().ServiceAccountEmail() == nil {
 			serviceConfig := function.ServiceConfigInput()
-			serviceConfig.ServiceAccountEmail = &runtimeServiceAccountEmail
+			serviceConfig.ServiceAccountEmail = (*runtimeServiceAccount).Email()
 			function.PutServiceConfig(serviceConfig)
 		}
 		security.NewServiceAccountCloudFunctionInvoker(
 			stack,
 			&function,
 			jsii.String("RuntimeServiceAccount"),
-			&runtimeServiceAccountEmail,
+			(*runtimeServiceAccount).Email(),
 			functionModule,
 			config.Options,
 		)
@@ -93,7 +104,7 @@ func NewGcpStack(stack *cdktf.TerraformStack, id string, config *GcpStackConfig)
 			event.PutDestination(destination)
 			serviceAccount := event.ServiceAccountInput()
 			if serviceAccount == nil {
-				serviceAccount = &runtimeServiceAccountEmail
+				serviceAccount = (*runtimeServiceAccount).Email()
 			}
 			event.SetServiceAccount(serviceAccount)
 		} else if functionModule.EventSource.TopicSpec != (module.EventSource{}.TopicSpec) {
@@ -115,7 +126,7 @@ func NewGcpStack(stack *cdktf.TerraformStack, id string, config *GcpStackConfig)
 				eventTrigger.TriggerRegion = config.Options.Cloud.Gcp.Provider.Region
 			}
 			if eventTrigger.ServiceAccountEmail == nil {
-				eventTrigger.ServiceAccountEmail = &runtimeServiceAccountEmail
+				eventTrigger.ServiceAccountEmail = (*runtimeServiceAccount).Email()
 			}
 			function.PutEventTrigger(eventTrigger)
 		} else if functionModule.EventSource.QueueSpec != (module.EventSource{}.QueueSpec) {
@@ -134,7 +145,7 @@ func NewGcpStack(stack *cdktf.TerraformStack, id string, config *GcpStackConfig)
 			}
 			if httpTarget.OidcToken == nil {
 				httpTarget.OidcToken = &google.CloudSchedulerJobHttpTargetOidcToken{
-					ServiceAccountEmail: &runtimeServiceAccountEmail,
+					ServiceAccountEmail: (*runtimeServiceAccount).Email(),
 					Audience:            function.ServiceConfig().Uri(),
 				}
 			}
@@ -167,21 +178,21 @@ func NewGcpStack(stack *cdktf.TerraformStack, id string, config *GcpStackConfig)
 			}
 			function.PutServiceConfig(serviceConfig)
 		}
-		serviceEndpoints[functionModule.Name] = orchestration.Endpoint{Uri: *function.ServiceConfig().Uri()}
+		serviceEndpoints[functionModule.Name] = service.Endpoint{Uri: *function.ServiceConfig().Uri()}
 	}
 	for i := range containerModules {
 		containerModule := containerModules[i]
 		runService := *service.NewRunService(stack, containerModule, config.Options)
 		if runService.Template().Spec().ServiceAccountName() == nil {
 			template := runService.TemplateInput()
-			template.Spec.ServiceAccountName = &runtimeServiceAccountEmail
+			template.Spec.ServiceAccountName = (*runtimeServiceAccount).Email()
 			runService.PutTemplate(template)
 		}
 		security.NewServiceAccountCloudRunInvoker(
 			stack,
 			runService.Name(),
 			jsii.String("RuntimeServiceAccount"),
-			&runtimeServiceAccountEmail,
+			(*runtimeServiceAccount).Email(),
 			containerModule,
 			config.Options,
 		)
@@ -200,7 +211,7 @@ func NewGcpStack(stack *cdktf.TerraformStack, id string, config *GcpStackConfig)
 			trigger.PutDestination(destination)
 			serviceAccount := trigger.ServiceAccountInput()
 			if serviceAccount == nil {
-				serviceAccount = &runtimeServiceAccountEmail
+				serviceAccount = (*runtimeServiceAccount).Email()
 			}
 			trigger.SetServiceAccount(serviceAccount)
 		} else if containerModule.EventSource.TopicSpec != (module.EventSource{}.TopicSpec) {
@@ -225,7 +236,7 @@ func NewGcpStack(stack *cdktf.TerraformStack, id string, config *GcpStackConfig)
 			destination.CloudRunService.Region = config.Options.Cloud.Gcp.Provider.Region
 			trigger.PutDestination(destination)
 			serviceAccount := trigger.ServiceAccountInput()
-			serviceAccount = &runtimeServiceAccountEmail
+			serviceAccount = (*runtimeServiceAccount).Email()
 			trigger.SetServiceAccount(serviceAccount)
 		} else if containerModule.EventSource.QueueSpec != (module.EventSource{}.QueueSpec) {
 			eventsource.NewQueueEventSource(stack, &containerModule.EventSource, config.Options)
@@ -243,7 +254,7 @@ func NewGcpStack(stack *cdktf.TerraformStack, id string, config *GcpStackConfig)
 			}
 			if httpTarget.OidcToken == nil {
 				httpTarget.OidcToken = &google.CloudSchedulerJobHttpTargetOidcToken{
-					ServiceAccountEmail: &runtimeServiceAccountEmail,
+					ServiceAccountEmail: (*runtimeServiceAccount).Email(),
 					Audience:            runService.Status().Get(jsii.Number(0)).Url(),
 				}
 			}
@@ -271,9 +282,6 @@ func NewGcpStack(stack *cdktf.TerraformStack, id string, config *GcpStackConfig)
 		}
 		runService.PutMetadata(runMetadata)
 		runTemplate := runService.TemplateInput()
-		if runTemplate.Metadata == nil {
-			runTemplate.Metadata = &google.CloudRunServiceTemplateMetadata{}
-		}
 		if runTemplate.Metadata.Annotations == nil {
 			annotations := make(map[string]*string, 2)
 			runTemplate.Metadata.Annotations = &annotations
@@ -288,22 +296,36 @@ func NewGcpStack(stack *cdktf.TerraformStack, id string, config *GcpStackConfig)
 			}
 		}
 		runService.PutTemplate(runTemplate)
-		serviceEndpoints[containerModule.Name] = orchestration.Endpoint{Uri: *runService.Status().Get(jsii.Number(0)).Url()}
+		serviceEndpoints[containerModule.Name] = service.Endpoint{Uri: *runService.Status().Get(jsii.Number(0)).Url()}
 	}
-	if len(config.Manifests) > 0 && len(config.Options.OrchestrationConfig.Gcp.FilePath) > 0 {
-		workflow := *orchestration.NewWorkflow(stack, nil, nil, config.Options)
-		if workflow.ServiceAccountInput() == nil {
-			workflow.SetServiceAccount(&runtimeServiceAccountEmail)
+	var apiConfig *googlebeta.GoogleApiGatewayApiConfigA
+	if len(config.Manifests) > 0 && len(config.Options.BuildConfig.Files.Networking.Gcp.GatewayPath) > 0 {
+		_, apiConfig = networking.NewGateway(stack, nil, nil, config.Options, &betaProvider)
+	} else if gatewayModules := modules.gateway; len(gatewayModules) > 0 {
+		_, apiConfig = networking.NewGateway(stack, gatewayModules, &serviceEndpoints, config.Options, &betaProvider)
+	}
+	if apiConfig != nil {
+		gatewayConfig := (*apiConfig).GatewayConfigInput()
+		if gatewayConfig == nil {
+			gatewayConfig = &googlebeta.GoogleApiGatewayApiConfigGatewayConfig{}
 		}
+		if gatewayConfig.BackendConfig == nil {
+			gatewayConfig.BackendConfig = &googlebeta.GoogleApiGatewayApiConfigGatewayConfigBackendConfig{}
+		}
+		if gatewayConfig.BackendConfig.GoogleServiceAccount == nil {
+			gatewayConfig.BackendConfig.GoogleServiceAccount = (*runtimeServiceAccount).Email()
+		}
+		(*apiConfig).PutGatewayConfig(gatewayConfig)
+	}
+	var workflow *google.WorkflowsWorkflow
+	if len(config.Manifests) > 0 && len(config.Options.BuildConfig.Files.Orchestration.Gcp.WorkflowPath) > 0 {
+		workflow = orchestration.NewWorkflow(stack, nil, nil, config.Options)
 	} else if workflowModules := modules.workflow; len(workflowModules) > 0 {
-		workflow := *orchestration.NewWorkflow(
-			stack,
-			workflowModules,
-			&serviceEndpoints,
-			config.Options,
-		)
-		if workflow.ServiceAccountInput() == nil {
-			workflow.SetServiceAccount(&runtimeServiceAccountEmail)
+		workflow = orchestration.NewWorkflow(stack, workflowModules, &serviceEndpoints, config.Options)
+	}
+	if workflow != nil {
+		if (*workflow).ServiceAccountInput() == nil {
+			(*workflow).SetServiceAccount((*runtimeServiceAccount).Email())
 		}
 	}
 	return *stack

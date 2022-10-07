@@ -8,17 +8,18 @@ import (
 	"github.com/hashicorp/terraform-cdk-go/cdktf"
 	"github.com/mnahad/cloud-seed/services/config/module"
 	"github.com/mnahad/cloud-seed/services/config/project"
+	"github.com/mnahad/cloud-seed/services/stackbuilder/gcp/service"
 )
 
 func NewWorkflow(
 	scope *cdktf.TerraformStack,
 	modules []*module.Module,
-	endpoints *ServiceEndpoints,
+	endpoints *service.Endpoints,
 	options *project.Config,
 ) *google.WorkflowsWorkflow {
 	var sourceContents *string
-	if len(options.OrchestrationConfig.Gcp.FilePath) > 0 {
-		contents, err := os.ReadFile(options.OrchestrationConfig.Gcp.FilePath)
+	if len(options.BuildConfig.Files.Orchestration.Gcp.WorkflowPath) > 0 {
+		contents, err := os.ReadFile(options.BuildConfig.Files.Orchestration.Gcp.WorkflowPath)
 		if err != nil {
 			panic(err)
 		}
@@ -28,9 +29,9 @@ func NewWorkflow(
 		sourceContents = generateWorkflowSourceContents(modules, endpoints)
 	}
 	workflowConfig := new(google.WorkflowsWorkflowConfig)
-	(*workflowConfig) = options.OrchestrationConfig.Gcp.Config
+	(*workflowConfig) = options.Cloud.Gcp.Orchestration.Workflow
 	if workflowConfig.Name == nil {
-		workflowConfig.Name = jsii.String(*options.Cloud.Gcp.Provider.Project + "-workflow")
+		workflowConfig.Name = jsii.String("workflow")
 	}
 	if workflowConfig.SourceContents == nil {
 		workflowConfig.SourceContents = sourceContents
@@ -38,7 +39,7 @@ func NewWorkflow(
 	if workflowConfig.Region == nil {
 		workflowConfig.Region = options.Cloud.Gcp.Provider.Region
 	}
-	workflow := google.NewWorkflowsWorkflow(*scope, jsii.String("Workflow"), workflowConfig)
+	workflow := google.NewWorkflowsWorkflow(*scope, workflowConfig.Name, workflowConfig)
 	return &workflow
 }
 
@@ -52,7 +53,7 @@ func IsWorkflow(o *module.Orchestration) bool {
 		len(o.Workflow.Next.Condition) > 0
 }
 
-func generateWorkflowSourceContents(modules []*module.Module, endpoints *ServiceEndpoints) *string {
+func generateWorkflowSourceContents(modules []*module.Module, endpoints *service.Endpoints) *string {
 	var workflow workflow
 	var steps stepsCollection
 	for i := range modules {

@@ -77,24 +77,14 @@ func NewAllUsersCloudRunInvoker(
 	return &iamMember
 }
 
-func GenerateRuntimeServiceAccount(scope *cdktf.TerraformStack, options *project.Config) *string {
-	if options.Cloud.Gcp.Security.RuntimeServiceAccount != (google.ServiceAccountConfig{}) {
-		serviceAccount := google.NewServiceAccount(
-			*scope,
-			options.Cloud.Gcp.Security.RuntimeServiceAccount.AccountId,
-			&options.Cloud.Gcp.Security.RuntimeServiceAccount,
-		)
-		runtimeServiceAccount = &serviceAccount
-		return serviceAccount.Email()
-	} else {
-		serviceAccount := google.NewDataGoogleComputeDefaultServiceAccount(
-			*scope,
-			jsii.String("ComputeDefaultServiceAccount"),
-			&google.DataGoogleComputeDefaultServiceAccountConfig{},
-		)
-		computeDefaultServiceAccount = &serviceAccount
-		return serviceAccount.Email()
+func NewRuntimeServiceAccount(scope *cdktf.TerraformStack, options *project.Config) *google.ServiceAccount {
+	serviceAccountConfig := new(google.ServiceAccountConfig)
+	(*serviceAccountConfig) = options.Cloud.Gcp.Security.RuntimeServiceAccount
+	if serviceAccountConfig.AccountId == nil {
+		serviceAccountConfig.AccountId = jsii.String("runtime")
 	}
+	serviceAccount := google.NewServiceAccount(*scope, serviceAccountConfig.AccountId, serviceAccountConfig)
+	return &serviceAccount
 }
 
 func NewSecretManagerSecret(

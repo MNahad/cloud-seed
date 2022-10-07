@@ -1,11 +1,5 @@
 package orchestration
 
-type ServiceEndpoints map[string]Endpoint
-
-type Endpoint struct {
-	Uri string
-}
-
 type step[T call | condition | ret] map[string]T
 
 type steps[T call | condition | ret] struct {

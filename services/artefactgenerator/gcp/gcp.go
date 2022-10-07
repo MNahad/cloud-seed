@@ -8,7 +8,7 @@ import (
 	"github.com/mnahad/cloud-seed/services/config/project"
 )
 
-var outPrefix [2]string = [...]string{"artefacts", "gcp"}
+var outPrefix = [2]string{"artefacts", "gcp"}
 
 type artefact string
 

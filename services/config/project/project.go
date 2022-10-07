@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/hashicorp/cdktf-provider-google-go/google/v2"
+	"github.com/hashicorp/cdktf-provider-googlebeta-go/googlebeta/v2"
 	"github.com/hashicorp/terraform-cdk-go/cdktf"
 )
 
@@ -14,7 +15,6 @@ type Config struct {
 	tfConfig
 	buildConfig
 	environmentConfig
-	orchestrationConfig
 	metadata
 }
 
@@ -23,21 +23,29 @@ type ConfigFile struct {
 	EnvironmentOverrides map[string]Config `json:"environmentOverrides"`
 }
 
-func (projectConfig *ConfigFile) MergeConfig(env *string) Config {
+func (projectConfig *ConfigFile) MergeConfig(env string) Config {
 	conf := new(Config)
 	*conf = projectConfig.Default
-	envConf := projectConfig.EnvironmentOverrides[*env]
+	if env == "" {
+		return *conf
+	}
+	envConf := projectConfig.EnvironmentOverrides[env]
 	conf.cloudConfig.merge(&envConf.cloudConfig)
 	conf.tfConfig.merge(&envConf.tfConfig)
 	conf.buildConfig.merge(&envConf.buildConfig)
 	conf.environmentConfig.merge(&envConf.environmentConfig)
-	conf.orchestrationConfig.merge(&envConf.orchestrationConfig)
 	conf.metadata.merge(&envConf.metadata)
 	return *conf
 }
 
-func DetectConfig() (*ConfigFile, error) {
-	pwd, err := os.Getwd()
+func DetectConfig(dir string) (*ConfigFile, error) {
+	var pwd string
+	var err error
+	if dir != "" {
+		pwd, err = filepath.Abs(dir)
+	} else {
+		pwd, err = os.Getwd()
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -56,24 +64,33 @@ func DetectConfig() (*ConfigFile, error) {
 type cloudConfig struct {
 	Cloud struct {
 		Gcp struct {
-			Provider   google.GoogleProviderConfig `json:"provider"`
-			Networking struct {
+			Provider     google.GoogleProviderConfig         `json:"provider"`
+			BetaProvider googlebeta.GoogleBetaProviderConfig `json:"betaProvider"`
+			Networking   struct {
+				ApiGateway struct {
+					Api       googlebeta.GoogleApiGatewayApiConfig        `json:"api"`
+					ApiConfig googlebeta.GoogleApiGatewayApiConfigAConfig `json:"apiConfig"`
+					Gateway   googlebeta.GoogleApiGatewayGatewayConfig    `json:"gateway"`
+				} `json:"apiGateway"`
 				StaticIpNetwork struct {
-					AccessConnector google.VpcAccessConnectorConfig `json:"accessConnector"`
-					Address         google.ComputeAddressConfig     `json:"address"`
-					Network         google.ComputeNetworkConfig     `json:"network"`
-					Router          google.ComputeRouterConfig      `json:"router"`
-					RouterNat       google.ComputeRouterNatConfig   `json:"routerNat"`
+					Address            google.ComputeAddressConfig     `json:"address"`
+					Network            google.ComputeNetworkConfig     `json:"network"`
+					Router             google.ComputeRouterConfig      `json:"router"`
+					RouterNat          google.ComputeRouterNatConfig   `json:"routerNat"`
+					VpcAccessConnector google.VpcAccessConnectorConfig `json:"vpcAccessConnector"`
 				} `json:"staticIpNetwork"`
 			} `json:"networking"`
+			Orchestration struct {
+				Workflow google.WorkflowsWorkflowConfig `json:"workflow"`
+			} `json:"orchestration"`
 			Security struct {
 				RuntimeServiceAccount google.ServiceAccountConfig      `json:"runtimeServiceAccount"`
 				SecretManagerSecret   google.SecretManagerSecretConfig `json:"secretManagerSecret"`
 			} `json:"security"`
 			Service struct {
 				SourceCodeStorage struct {
-					Bucket                     google.StorageBucketConfig              `json:"bucket"`
 					ArtifactRegistryRepository google.ArtifactRegistryRepositoryConfig `json:"artifactRegistryRepository"`
+					Bucket                     google.StorageBucketConfig              `json:"bucket"`
 					StagingBucket              google.StorageBucketConfig              `json:"stagingBucket"`
 				} `json:"sourceCodeStorage"`
 			} `json:"service"`
@@ -85,8 +102,17 @@ func (c *cloudConfig) merge(other *cloudConfig) {
 	if other.Cloud.Gcp.Provider != (google.GoogleProviderConfig{}) {
 		c.Cloud.Gcp.Provider = other.Cloud.Gcp.Provider
 	}
-	if other.Cloud.Gcp.Networking.StaticIpNetwork.AccessConnector != (google.VpcAccessConnectorConfig{}) {
-		c.Cloud.Gcp.Networking.StaticIpNetwork.AccessConnector = other.Cloud.Gcp.Networking.StaticIpNetwork.AccessConnector
+	if other.Cloud.Gcp.BetaProvider != (googlebeta.GoogleBetaProviderConfig{}) {
+		c.Cloud.Gcp.BetaProvider = other.Cloud.Gcp.BetaProvider
+	}
+	if other.Cloud.Gcp.Networking.ApiGateway.Api != (googlebeta.GoogleApiGatewayApiConfig{}) {
+		c.Cloud.Gcp.Networking.ApiGateway.Api = other.Cloud.Gcp.Networking.ApiGateway.Api
+	}
+	if other.Cloud.Gcp.Networking.ApiGateway.ApiConfig != (googlebeta.GoogleApiGatewayApiConfigAConfig{}) {
+		c.Cloud.Gcp.Networking.ApiGateway.ApiConfig = other.Cloud.Gcp.Networking.ApiGateway.ApiConfig
+	}
+	if other.Cloud.Gcp.Networking.ApiGateway.Gateway != (googlebeta.GoogleApiGatewayGatewayConfig{}) {
+		c.Cloud.Gcp.Networking.ApiGateway.Gateway = other.Cloud.Gcp.Networking.ApiGateway.Gateway
 	}
 	if other.Cloud.Gcp.Networking.StaticIpNetwork.Address != (google.ComputeAddressConfig{}) {
 		c.Cloud.Gcp.Networking.StaticIpNetwork.Address = other.Cloud.Gcp.Networking.StaticIpNetwork.Address
@@ -100,18 +126,25 @@ func (c *cloudConfig) merge(other *cloudConfig) {
 	if other.Cloud.Gcp.Networking.StaticIpNetwork.RouterNat != (google.ComputeRouterNatConfig{}) {
 		c.Cloud.Gcp.Networking.StaticIpNetwork.RouterNat = other.Cloud.Gcp.Networking.StaticIpNetwork.RouterNat
 	}
+	if other.Cloud.Gcp.Networking.StaticIpNetwork.VpcAccessConnector != (google.VpcAccessConnectorConfig{}) {
+		c.Cloud.Gcp.Networking.StaticIpNetwork.VpcAccessConnector =
+			other.Cloud.Gcp.Networking.StaticIpNetwork.VpcAccessConnector
+	}
+	if other.Cloud.Gcp.Orchestration.Workflow != (google.WorkflowsWorkflowConfig{}) {
+		c.Cloud.Gcp.Orchestration.Workflow = other.Cloud.Gcp.Orchestration.Workflow
+	}
 	if other.Cloud.Gcp.Security.RuntimeServiceAccount != (google.ServiceAccountConfig{}) {
 		c.Cloud.Gcp.Security.RuntimeServiceAccount = other.Cloud.Gcp.Security.RuntimeServiceAccount
 	}
 	if other.Cloud.Gcp.Security.SecretManagerSecret != (google.SecretManagerSecretConfig{}) {
 		c.Cloud.Gcp.Security.SecretManagerSecret = other.Cloud.Gcp.Security.SecretManagerSecret
 	}
-	if other.Cloud.Gcp.Service.SourceCodeStorage.Bucket != (google.StorageBucketConfig{}) {
-		c.Cloud.Gcp.Service.SourceCodeStorage.Bucket = other.Cloud.Gcp.Service.SourceCodeStorage.Bucket
-	}
 	if other.Cloud.Gcp.Service.SourceCodeStorage.ArtifactRegistryRepository != (google.ArtifactRegistryRepositoryConfig{}) {
 		c.Cloud.Gcp.Service.SourceCodeStorage.ArtifactRegistryRepository =
 			other.Cloud.Gcp.Service.SourceCodeStorage.ArtifactRegistryRepository
+	}
+	if other.Cloud.Gcp.Service.SourceCodeStorage.Bucket != (google.StorageBucketConfig{}) {
+		c.Cloud.Gcp.Service.SourceCodeStorage.Bucket = other.Cloud.Gcp.Service.SourceCodeStorage.Bucket
 	}
 	if other.Cloud.Gcp.Service.SourceCodeStorage.StagingBucket != (google.StorageBucketConfig{}) {
 		c.Cloud.Gcp.Service.SourceCodeStorage.StagingBucket = other.Cloud.Gcp.Service.SourceCodeStorage.StagingBucket
@@ -121,7 +154,6 @@ func (c *cloudConfig) merge(other *cloudConfig) {
 type tfConfig struct {
 	TfConfig struct {
 		Backend tfBackendConfig `json:"backend"`
-		Cdktf   string          `json:"cdktf"`
 	} `json:"tfConfig"`
 }
 
@@ -134,9 +166,6 @@ func (c *tfConfig) merge(other *tfConfig) {
 	}
 	if other.TfConfig.Backend.Local != (cdktf.LocalBackendProps{}) {
 		c.TfConfig.Backend.Local = other.TfConfig.Backend.Local
-	}
-	if len(other.TfConfig.Cdktf) > 0 {
-		c.TfConfig.Cdktf = other.TfConfig.Cdktf
 	}
 }
 
@@ -179,6 +208,18 @@ type buildConfig struct {
 	BuildConfig struct {
 		Dir    string `json:"dir"`
 		OutDir string `json:"outDir"`
+		Files  struct {
+			Networking struct {
+				Gcp struct {
+					GatewayPath string `json:"gatewayPath"`
+				} `json:"gcp"`
+			} `json:"networking"`
+			Orchestration struct {
+				Gcp struct {
+					WorkflowPath string `json:"workflowPath"`
+				} `json:"gcp"`
+			} `json:"orchestration"`
+		} `json:"files"`
 	} `json:"buildConfig"`
 }
 
@@ -188,6 +229,12 @@ func (c *buildConfig) merge(other *buildConfig) {
 	}
 	if len(other.BuildConfig.OutDir) > 0 {
 		c.BuildConfig.OutDir = other.BuildConfig.OutDir
+	}
+	if len(other.BuildConfig.Files.Networking.Gcp.GatewayPath) > 0 {
+		c.BuildConfig.Files.Networking.Gcp.GatewayPath = other.BuildConfig.Files.Networking.Gcp.GatewayPath
+	}
+	if len(other.BuildConfig.Files.Orchestration.Gcp.WorkflowPath) > 0 {
+		c.BuildConfig.Files.Orchestration.Gcp.WorkflowPath = other.BuildConfig.Files.Orchestration.Gcp.WorkflowPath
 	}
 }
 
@@ -212,24 +259,6 @@ func (c *environmentConfig) merge(other *environmentConfig) {
 	}
 	for i := range other.EnvironmentConfig.SecretVariableNames {
 		c.EnvironmentConfig.SecretVariableNames[i] = other.EnvironmentConfig.SecretVariableNames[i]
-	}
-}
-
-type orchestrationConfig struct {
-	OrchestrationConfig struct {
-		Gcp struct {
-			FilePath string                         `json:"filePath"`
-			Config   google.WorkflowsWorkflowConfig `json:"config"`
-		} `json:"gcp"`
-	} `json:"orchestrationConfig"`
-}
-
-func (c *orchestrationConfig) merge(other *orchestrationConfig) {
-	if len(other.OrchestrationConfig.Gcp.FilePath) > 0 {
-		c.OrchestrationConfig.Gcp.FilePath = other.OrchestrationConfig.Gcp.FilePath
-	}
-	if other.OrchestrationConfig.Gcp.Config != (google.WorkflowsWorkflowConfig{}) {
-		c.OrchestrationConfig.Gcp.Config = other.OrchestrationConfig.Gcp.Config
 	}
 }
 

@@ -8,8 +8,8 @@ import (
 	"github.com/mnahad/cloud-seed/services/stackbuilder"
 )
 
-func Build(env *string) (*project.Config, *cdktf.App) {
-	projectConf, err := project.DetectConfig()
+func Build(env string, dir string) (*project.Config, *cdktf.App) {
+	projectConf, err := project.DetectConfig(dir)
 	if err != nil {
 		panic(err)
 	}
@@ -28,7 +28,7 @@ func Build(env *string) (*project.Config, *cdktf.App) {
 	stackbuilder.NewStack(
 		&app,
 		"CloudSeed",
-		&stackbuilder.StackConfig{Environment: env, Manifests: manifests, Config: &conf},
+		&stackbuilder.StackConfig{Environment: &env, Manifests: manifests, Config: &conf},
 	)
 	app.Synth()
 	return &conf, &app

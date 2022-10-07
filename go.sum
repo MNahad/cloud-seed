@@ -1,6 +1,7 @@
 github.com/Masterminds/semver/v3 v3.1.1 h1:hLg3sBzpNErnxhQtUy/mmLR2I9foDujNK030IGemrRc=
 github.com/Masterminds/semver/v3 v3.1.1/go.mod h1:VPu/7SZ7ePZ3QOrcuXROw5FAcLl4a0cBrbBpGY/8hQs=
 github.com/aws/constructs-go/constructs/v10 v10.1.113/go.mod h1:utyhwXdG4CxzHORjVi92o3h0x8H59sZZqSR3dsrzp8w=
+github.com/aws/constructs-go/constructs/v10 v10.1.116/go.mod h1:oTVXTVKdXCnJID4eAEUmO4tpyevdt6kyjopkBR2DDYI=
 github.com/aws/constructs-go/constructs/v10 v10.1.120 h1:QDyCaLPEQ2pF9iNAhUgtPa8sCx3PlD7TH3X43y67TEw=
 github.com/aws/constructs-go/constructs/v10 v10.1.120/go.mod h1:oTVXTVKdXCnJID4eAEUmO4tpyevdt6kyjopkBR2DDYI=
 github.com/aws/jsii-runtime-go v1.68.0/go.mod h1:91SPsitQ+dDlxHNkXqVt1C6QmPmHC32QJm4xg6F5Q+4=
@@ -12,6 +13,8 @@ github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/hashicorp/cdktf-provider-google-go/google/v2 v2.0.46 h1:kLS8/BPgZdm8WmCvJNCWr0cf3TpxXXPt+hZk0vJ1WnE=
 github.com/hashicorp/cdktf-provider-google-go/google/v2 v2.0.46/go.mod h1:cJJ2LFNGceSfNuq75m0vH+QoRo8vJmU1Ih6IyEtuopU=
+github.com/hashicorp/cdktf-provider-googlebeta-go/googlebeta/v2 v2.0.46 h1:dcpg+E32SSZoFIGahmF1Mju3hbvC16t9E87xAjZpB6o=
+github.com/hashicorp/cdktf-provider-googlebeta-go/googlebeta/v2 v2.0.46/go.mod h1:MaCYc0T6YWuJm7vZvXOWk6wBJcklC1FcX4PVOt01yW8=
 github.com/hashicorp/cdktf-provider-null-go/null/v2 v2.0.74 h1:bj/TBWBOcEUr0ORi1Mbg4DBDhWsOqgR7o7bcRBFB4t0=
 github.com/hashicorp/cdktf-provider-null-go/null/v2 v2.0.74/go.mod h1:s2wMK2aMiN3+jJiw5hFvytVrmW4KSMY6XxkBiSqRio8=
 github.com/hashicorp/terraform-cdk-go/cdktf v0.12.3 h1:H86ePgi+XYsfgFq5xCqVE8MpRkMA4UJvLPzRNzMInL8=

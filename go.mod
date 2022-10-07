@@ -5,6 +5,7 @@ go 1.19
 require (
 	github.com/aws/jsii-runtime-go v1.69.0
 	github.com/hashicorp/cdktf-provider-google-go/google/v2 v2.0.46
+	github.com/hashicorp/cdktf-provider-googlebeta-go/googlebeta/v2 v2.0.46
 	github.com/hashicorp/cdktf-provider-null-go/null/v2 v2.0.74
 	github.com/hashicorp/terraform-cdk-go/cdktf v0.12.3
 	github.com/spf13/cobra v1.5.0

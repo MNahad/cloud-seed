@@ -20,7 +20,7 @@ func newStaticIpNetwork(scope *cdktf.TerraformStack, options *project.Config) *g
 	networkConfig := new(google.ComputeNetworkConfig)
 	(*networkConfig) = options.Cloud.Gcp.Networking.StaticIpNetwork.Network
 	if networkConfig.Name == nil {
-		networkConfig.Name = jsii.String("static-ip-net")
+		networkConfig.Name = jsii.String("network")
 	}
 	if networkConfig.AutoCreateSubnetworks == nil {
 		networkConfig.AutoCreateSubnetworks = false
@@ -72,7 +72,7 @@ func newStaticIpNetwork(scope *cdktf.TerraformStack, options *project.Config) *g
 	}
 	google.NewComputeRouterNat(*scope, natConfig.Name, natConfig)
 	connectorConfig := new(google.VpcAccessConnectorConfig)
-	(*connectorConfig) = options.Cloud.Gcp.Networking.StaticIpNetwork.AccessConnector
+	(*connectorConfig) = options.Cloud.Gcp.Networking.StaticIpNetwork.VpcAccessConnector
 	if connectorConfig.Name == nil {
 		connectorConfig.Name = jsii.String(*networkConfig.Name + "-connector")
 	}
