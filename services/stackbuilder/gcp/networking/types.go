@@ -1,5 +1,17 @@
 package networking
 
+import (
+	"github.com/hashicorp/cdktf-provider-google-go/google/v2"
+)
+
+type networking struct {
+	vpcAccessConnector *google.VpcAccessConnector
+}
+
+func NewNetworking() *networking {
+	return &networking{}
+}
+
 type gateway struct {
 	Swagger string `json:"swagger"`
 	Info    struct {

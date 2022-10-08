@@ -8,20 +8,26 @@ import (
 	"github.com/mnahad/cloud-seed/services/config/project"
 )
 
-var runtimeServiceAccount *google.ServiceAccount
-var computeDefaultServiceAccount *google.DataGoogleComputeDefaultServiceAccount
-var secrets = make(map[string]*google.SecretManagerSecret)
+type security struct {
+	secrets map[string]*google.SecretManagerSecret
+}
 
-func NewAllUsersCloudFunctionInvoker(
+func NewSecurity() *security {
+	return &security{
+		secrets: make(map[string]*google.SecretManagerSecret),
+	}
+}
+
+func (s *security) NewAllUsersCloudFunctionInvoker(
 	scope *cdktf.TerraformStack,
 	function *google.Cloudfunctions2Function,
 	module *module.Module,
 	options *project.Config,
 ) *google.CloudRunServiceIamMember {
-	return NewAllUsersCloudRunInvoker(scope, (*function).ServiceConfig().Service(), module, options)
+	return s.NewAllUsersCloudRunInvoker(scope, (*function).ServiceConfig().Service(), module, options)
 }
 
-func NewServiceAccountCloudFunctionInvoker(
+func (s *security) NewServiceAccountCloudFunctionInvoker(
 	scope *cdktf.TerraformStack,
 	function *google.Cloudfunctions2Function,
 	serviceAccountName *string,
@@ -29,7 +35,7 @@ func NewServiceAccountCloudFunctionInvoker(
 	module *module.Module,
 	options *project.Config,
 ) *google.CloudRunServiceIamMember {
-	return NewServiceAccountCloudRunInvoker(
+	return s.NewServiceAccountCloudRunInvoker(
 		scope,
 		(*function).ServiceConfig().Service(),
 		serviceAccountName,
@@ -39,7 +45,7 @@ func NewServiceAccountCloudFunctionInvoker(
 	)
 }
 
-func NewServiceAccountCloudRunInvoker(
+func (s *security) NewServiceAccountCloudRunInvoker(
 	scope *cdktf.TerraformStack,
 	service *string,
 	serviceAccountName *string,
@@ -59,7 +65,7 @@ func NewServiceAccountCloudRunInvoker(
 	return &iamMember
 }
 
-func NewAllUsersCloudRunInvoker(
+func (s *security) NewAllUsersCloudRunInvoker(
 	scope *cdktf.TerraformStack,
 	service *string,
 	module *module.Module,
@@ -77,7 +83,7 @@ func NewAllUsersCloudRunInvoker(
 	return &iamMember
 }
 
-func NewRuntimeServiceAccount(scope *cdktf.TerraformStack, options *project.Config) *google.ServiceAccount {
+func (s *security) NewRuntimeServiceAccount(scope *cdktf.TerraformStack, options *project.Config) *google.ServiceAccount {
 	serviceAccountConfig := new(google.ServiceAccountConfig)
 	(*serviceAccountConfig) = options.Cloud.Gcp.Security.RuntimeServiceAccount
 	if serviceAccountConfig.AccountId == nil {
@@ -87,12 +93,12 @@ func NewRuntimeServiceAccount(scope *cdktf.TerraformStack, options *project.Conf
 	return &serviceAccount
 }
 
-func NewSecretManagerSecret(
+func (s *security) NewSecretManagerSecret(
 	scope *cdktf.TerraformStack,
 	name *string,
 	options *project.Config,
 ) *google.SecretManagerSecret {
-	if secrets[*name] == nil {
+	if s.secrets[*name] == nil {
 		secretConfig := new(google.SecretManagerSecretConfig)
 		(*secretConfig) = options.Cloud.Gcp.Security.SecretManagerSecret
 		if secretConfig.SecretId == nil {
@@ -108,12 +114,12 @@ func NewSecretManagerSecret(
 			}
 		}
 		secret := google.NewSecretManagerSecret(*scope, secretConfig.SecretId, secretConfig)
-		secrets[*name] = &secret
+		s.secrets[*name] = &secret
 	}
-	return secrets[*name]
+	return s.secrets[*name]
 }
 
-func NewServiceAccountSecretManagerSecretAccessor(
+func (s *security) NewServiceAccountSecretManagerSecretAccessor(
 	scope *cdktf.TerraformStack,
 	secretId *string,
 	secret *google.SecretManagerSecret,

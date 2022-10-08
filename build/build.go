@@ -1,6 +1,8 @@
 package build
 
 import (
+	"path/filepath"
+
 	"github.com/hashicorp/terraform-cdk-go/cdktf"
 	"github.com/mnahad/cloud-seed/services/artefactgenerator"
 	"github.com/mnahad/cloud-seed/services/config/module"
@@ -24,10 +26,11 @@ func Build(env string, dir string) (*project.Config, *cdktf.App) {
 			panic(err)
 		}
 	}
-	app := cdktf.NewApp(&cdktf.AppOptions{Outdir: &conf.BuildConfig.OutDir})
+	outDir := filepath.Join(conf.Path, conf.BuildConfig.OutDir)
+	app := cdktf.NewApp(&cdktf.AppOptions{Outdir: &outDir})
 	stackbuilder.NewStack(
 		&app,
-		"CloudSeed",
+		"cloudseed",
 		&stackbuilder.StackConfig{Environment: &env, Manifests: manifests, Config: &conf},
 	)
 	app.Synth()

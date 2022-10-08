@@ -7,13 +7,14 @@ import (
 	"github.com/mnahad/cloud-seed/services/config/project"
 )
 
-var vpcAccessConnector *google.VpcAccessConnector
-
-func NewVpcAccessConnector(scope *cdktf.TerraformStack, options *project.Config) *google.VpcAccessConnector {
-	if vpcAccessConnector == nil {
-		vpcAccessConnector = newStaticIpNetwork(scope, options)
+func (n *networking) NewVpcAccessConnector(
+	scope *cdktf.TerraformStack,
+	options *project.Config,
+) *google.VpcAccessConnector {
+	if n.vpcAccessConnector == nil {
+		n.vpcAccessConnector = newStaticIpNetwork(scope, options)
 	}
-	return vpcAccessConnector
+	return n.vpcAccessConnector
 }
 
 func newStaticIpNetwork(scope *cdktf.TerraformStack, options *project.Config) *google.VpcAccessConnector {

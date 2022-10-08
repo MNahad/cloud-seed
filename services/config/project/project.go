@@ -11,6 +11,7 @@ import (
 )
 
 type Config struct {
+	Path string `json:"path"`
 	cloudConfig
 	tfConfig
 	buildConfig
@@ -19,6 +20,7 @@ type Config struct {
 }
 
 type ConfigFile struct {
+	Path                 string            `json:"path"`
 	Default              Config            `json:"default"`
 	EnvironmentOverrides map[string]Config `json:"environmentOverrides"`
 }
@@ -26,6 +28,7 @@ type ConfigFile struct {
 func (projectConfig *ConfigFile) MergeConfig(env string) Config {
 	conf := new(Config)
 	*conf = projectConfig.Default
+	conf.Path = projectConfig.Path
 	if env == "" {
 		return *conf
 	}
@@ -58,6 +61,7 @@ func DetectConfig(dir string) (*ConfigFile, error) {
 	if err != nil {
 		return nil, err
 	}
+	config.Path = pwd
 	return config, nil
 }
 

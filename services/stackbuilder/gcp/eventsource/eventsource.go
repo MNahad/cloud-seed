@@ -7,16 +7,25 @@ import (
 	"github.com/mnahad/cloud-seed/services/config/project"
 )
 
-var topics = make(map[string]*google.PubsubTopic)
-var queues = make(map[string]*google.CloudTasksQueue)
+type eventSource struct {
+	topics map[string]*google.PubsubTopic
+	queues map[string]*google.CloudTasksQueue
+}
 
-func NewTopicEventSource(
+func NewEventSource() *eventSource {
+	return &eventSource{
+		topics: make(map[string]*google.PubsubTopic),
+		queues: make(map[string]*google.CloudTasksQueue),
+	}
+}
+
+func (e *eventSource) NewTopicEventSource(
 	scope *cdktf.TerraformStack,
 	eventSource *module.EventSource,
 	options *project.Config,
 ) *google.PubsubTopic {
 	name := *eventSource.TopicSpec.Gcp.Name
-	if topics[name] == nil {
+	if e.topics[name] == nil {
 		topicConfig := new(google.PubsubTopicConfig)
 		(*topicConfig) = eventSource.TopicSpec.Gcp
 		if topicConfig.MessageStoragePolicy == nil {
@@ -25,12 +34,12 @@ func NewTopicEventSource(
 			}
 		}
 		topic := google.NewPubsubTopic(*scope, &name, topicConfig)
-		topics[name] = &topic
+		e.topics[name] = &topic
 	}
-	return topics[name]
+	return e.topics[name]
 }
 
-func NewEventarcTrigger(
+func (e *eventSource) NewEventarcTrigger(
 	scope *cdktf.TerraformStack,
 	eventSource *module.EventSource,
 	options *project.Config,
@@ -47,25 +56,25 @@ func NewEventarcTrigger(
 	return &trigger
 }
 
-func NewQueueEventSource(
+func (e *eventSource) NewQueueEventSource(
 	scope *cdktf.TerraformStack,
 	eventSource *module.EventSource,
 	options *project.Config,
 ) *google.CloudTasksQueue {
 	name := *eventSource.QueueSpec.Gcp.Name
-	if queues[name] == nil {
+	if e.queues[name] == nil {
 		queueConfig := new(google.CloudTasksQueueConfig)
 		(*queueConfig) = eventSource.QueueSpec.Gcp
 		if queueConfig.Location == nil {
 			queueConfig.Location = options.Cloud.Gcp.Provider.Region
 		}
 		queue := google.NewCloudTasksQueue(*scope, &name, queueConfig)
-		queues[name] = &queue
+		e.queues[name] = &queue
 	}
-	return queues[name]
+	return e.queues[name]
 }
 
-func NewScheduleEventSource(
+func (e *eventSource) NewScheduleEventSource(
 	scope *cdktf.TerraformStack,
 	eventSource *module.EventSource,
 	options *project.Config,

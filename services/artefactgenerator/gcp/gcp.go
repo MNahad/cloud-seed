@@ -62,7 +62,12 @@ func generateGcpArtefact(
 	manifest *module.Manifest,
 	config *project.Config,
 ) error {
-	archivePath := filepath.Join(config.BuildConfig.OutDir, GetArtefactPrefix(artefactType), module.Name) + ".zip"
+	archivePath := filepath.Join(
+		config.Path,
+		config.BuildConfig.OutDir,
+		GetArtefactPrefix(artefactType),
+		module.Name,
+	) + ".zip"
 	err := archiver.Archive(archivePath, filepath.Dir(manifest.Path))
 	if err != nil {
 		return err

@@ -7,30 +7,39 @@ import (
 	"github.com/hashicorp/cdktf-provider-google-go/google/v2"
 	"github.com/hashicorp/cdktf-provider-null-go/null/v2"
 	"github.com/hashicorp/terraform-cdk-go/cdktf"
-	gcpArtefactGenerator "github.com/mnahad/cloud-seed/services/artefactgenerator/gcp"
+	gcpartefactgenerator "github.com/mnahad/cloud-seed/services/artefactgenerator/gcp"
 	"github.com/mnahad/cloud-seed/services/config/module"
 	"github.com/mnahad/cloud-seed/services/config/project"
 )
 
-var imageRepository *google.ArtifactRegistryRepository
-var stagingBucket *google.StorageBucket
-
-func NewRunService(scope *cdktf.TerraformStack, config *module.Module, options *project.Config) *google.CloudRunService {
-	if imageRepository == nil {
-		imageRepository = newArtifactRegistryRepository(scope, config, options)
+func (s *service) NewRunService(
+	scope *cdktf.TerraformStack,
+	config *module.Module,
+	options *project.Config,
+) *google.CloudRunService {
+	if s.imageRepository == nil {
+		s.imageRepository = newArtifactRegistryRepository(scope, config, options)
 	}
-	if stagingBucket == nil {
-		stagingBucket = newStagingBucket(scope, options)
+	if s.stagingBucket == nil {
+		s.stagingBucket = newStagingBucket(scope, options)
 	}
 	archivePath, err := filepath.Abs(filepath.Join(
+		options.Path,
 		options.BuildConfig.OutDir,
-		gcpArtefactGenerator.GetArtefactPrefix(gcpArtefactGenerator.ContainerArtefact),
+		gcpartefactgenerator.GetArtefactPrefix(gcpartefactgenerator.ContainerArtefact),
 		config.Name,
 	) + ".zip")
 	if err != nil {
 		panic(err)
 	}
-	image, imageUrl := newImage(scope, &config.Name, &archivePath, options)
+	image, imageUrl := newImage(
+		scope,
+		&config.Name,
+		&archivePath,
+		(*s.imageRepository).Name(),
+		(*s.stagingBucket).Id(),
+		options,
+	)
 	runConfig := new(google.CloudRunServiceConfig)
 	(*runConfig) = config.Service.Container.Gcp
 	if runConfig.Name == nil {
@@ -151,21 +160,19 @@ func newStagingBucket(scope *cdktf.TerraformStack, options *project.Config) *goo
 	return &stagingBucket
 }
 
-func getImageUrl(project *string, region *string, repositoryName *string, sourceName *string, tag *string) string {
-	return *region + "-docker.pkg.dev/" + *project + "/" + *repositoryName + "/" + *sourceName + ":" + *tag
-}
-
 func newImage(
 	scope *cdktf.TerraformStack,
 	archiveName *string,
 	archivePath *string,
+	imageRepositoryName *string,
+	stagingBucketId *string,
 	options *project.Config,
 ) (null.Resource, string) {
 	archiveHash := cdktf.Fn_Filesha1(archivePath)
 	imageUrl := getImageUrl(
 		options.Cloud.Gcp.Provider.Project,
 		options.Cloud.Gcp.Provider.Region,
-		(*imageRepository).Name(),
+		imageRepositoryName,
 		archiveName,
 		archiveHash,
 	)
@@ -177,8 +184,8 @@ func newImage(
 		"--project "+*options.Cloud.Gcp.Provider.Project,
 		"--region "+*options.Cloud.Gcp.Provider.Region,
 		"--tag "+imageUrl,
-		"--gcs-source-staging-dir gs://"+*(*stagingBucket).Id()+"/source",
-		"--gcs-log-dir gs://"+*(*stagingBucket).Id()+"/log",
+		"--gcs-source-staging-dir gs://"+*stagingBucketId+"/source",
+		"--gcs-log-dir gs://"+*stagingBucketId+"/log",
 		"--suppress-logs",
 	)
 	nullResource := null.NewResource(*scope, jsii.String(*archiveName+"sourceImage"), &null.ResourceConfig{
@@ -193,4 +200,8 @@ func newImage(
 		},
 	})
 	return nullResource, imageUrl
+}
+
+func getImageUrl(project *string, region *string, repositoryName *string, sourceName *string, tag *string) string {
+	return *region + "-docker.pkg.dev/" + *project + "/" + *repositoryName + "/" + *sourceName + ":" + *tag
 }

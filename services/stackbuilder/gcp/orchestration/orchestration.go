@@ -8,13 +8,13 @@ import (
 	"github.com/hashicorp/terraform-cdk-go/cdktf"
 	"github.com/mnahad/cloud-seed/services/config/module"
 	"github.com/mnahad/cloud-seed/services/config/project"
-	"github.com/mnahad/cloud-seed/services/stackbuilder/gcp/service"
+	serviceendpoint "github.com/mnahad/cloud-seed/services/stackbuilder/gcp/service/endpoint"
 )
 
 func NewWorkflow(
 	scope *cdktf.TerraformStack,
 	modules []*module.Module,
-	endpoints *service.Endpoints,
+	endpoints *serviceendpoint.Endpoints,
 	options *project.Config,
 ) *google.WorkflowsWorkflow {
 	var sourceContents *string
@@ -43,17 +43,17 @@ func NewWorkflow(
 	return &workflow
 }
 
-func IsWorkflow(o *module.Orchestration) bool {
+func IsWorkflow(mo *module.Orchestration) bool {
 	workflow := (module.Orchestration{}.Workflow)
-	return o.Workflow.Start ||
-		o.Workflow.End ||
-		o.Workflow.Input != workflow.Input ||
-		o.Workflow.Output != workflow.Output ||
-		o.Workflow.Next.Jump != workflow.Next.Jump ||
-		len(o.Workflow.Next.Condition) > 0
+	return mo.Workflow.Start ||
+		mo.Workflow.End ||
+		mo.Workflow.Input != workflow.Input ||
+		mo.Workflow.Output != workflow.Output ||
+		mo.Workflow.Next.Jump != workflow.Next.Jump ||
+		len(mo.Workflow.Next.Condition) > 0
 }
 
-func generateWorkflowSourceContents(modules []*module.Module, endpoints *service.Endpoints) *string {
+func generateWorkflowSourceContents(modules []*module.Module, endpoints *serviceendpoint.Endpoints) *string {
 	var workflow workflow
 	var steps stepsCollection
 	for i := range modules {

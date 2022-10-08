@@ -12,6 +12,7 @@ import (
 	"github.com/mnahad/cloud-seed/services/stackbuilder/gcp/orchestration"
 	"github.com/mnahad/cloud-seed/services/stackbuilder/gcp/security"
 	"github.com/mnahad/cloud-seed/services/stackbuilder/gcp/service"
+	serviceendpoint "github.com/mnahad/cloud-seed/services/stackbuilder/gcp/service/endpoint"
 )
 
 type modulesCollection struct {
@@ -28,6 +29,10 @@ type GcpStackConfig struct {
 }
 
 func NewGcpStack(stack *cdktf.TerraformStack, id string, config *GcpStackConfig) cdktf.TerraformStack {
+	eventsource := eventsource.NewEventSource()
+	networking := networking.NewNetworking()
+	security := security.NewSecurity()
+	service := service.NewService()
 	google.NewGoogleProvider(*stack, jsii.String("Google"), &config.Options.Cloud.Gcp.Provider)
 	betaProvider := googlebeta.NewGoogleBetaProvider(
 		*stack,
@@ -74,7 +79,7 @@ func NewGcpStack(stack *cdktf.TerraformStack, id string, config *GcpStackConfig)
 	}
 	functionModules := modules.function
 	containerModules := modules.container
-	serviceEndpoints := make(service.Endpoints, len(functionModules)+len(containerModules))
+	serviceEndpoints := make(serviceendpoint.Endpoints, len(functionModules)+len(containerModules))
 	for i := range functionModules {
 		functionModule := functionModules[i]
 		function := *service.NewFunction(
@@ -178,7 +183,7 @@ func NewGcpStack(stack *cdktf.TerraformStack, id string, config *GcpStackConfig)
 			}
 			function.PutServiceConfig(serviceConfig)
 		}
-		serviceEndpoints[functionModule.Name] = service.Endpoint{Uri: *function.ServiceConfig().Uri()}
+		serviceEndpoints[functionModule.Name] = serviceendpoint.Endpoint{Uri: *function.ServiceConfig().Uri()}
 	}
 	for i := range containerModules {
 		containerModule := containerModules[i]
@@ -296,7 +301,8 @@ func NewGcpStack(stack *cdktf.TerraformStack, id string, config *GcpStackConfig)
 			}
 		}
 		runService.PutTemplate(runTemplate)
-		serviceEndpoints[containerModule.Name] = service.Endpoint{Uri: *runService.Status().Get(jsii.Number(0)).Url()}
+		serviceEndpoints[containerModule.Name] =
+			serviceendpoint.Endpoint{Uri: *runService.Status().Get(jsii.Number(0)).Url()}
 	}
 	var apiConfig *googlebeta.GoogleApiGatewayApiConfigA
 	if len(config.Manifests) > 0 && len(config.Options.BuildConfig.Files.Networking.Gcp.GatewayPath) > 0 {

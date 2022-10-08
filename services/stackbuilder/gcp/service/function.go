@@ -6,24 +6,23 @@ import (
 	"github.com/aws/jsii-runtime-go"
 	"github.com/hashicorp/cdktf-provider-google-go/google/v2"
 	"github.com/hashicorp/terraform-cdk-go/cdktf"
-	gcpArtefactGenerator "github.com/mnahad/cloud-seed/services/artefactgenerator/gcp"
+	gcpartefactgenerator "github.com/mnahad/cloud-seed/services/artefactgenerator/gcp"
 	"github.com/mnahad/cloud-seed/services/config/module"
 	"github.com/mnahad/cloud-seed/services/config/project"
 )
 
-var archiveBucket *google.StorageBucket
-
-func NewFunction(
+func (s *service) NewFunction(
 	scope *cdktf.TerraformStack,
 	config *module.Module,
 	options *project.Config,
 ) *google.Cloudfunctions2Function {
-	if archiveBucket == nil {
-		archiveBucket = newArchiveBucket(scope, options)
+	if s.archiveBucket == nil {
+		s.archiveBucket = newArchiveBucket(scope, options)
 	}
 	archivePath, err := filepath.Abs(filepath.Join(
+		options.Path,
 		options.BuildConfig.OutDir,
-		gcpArtefactGenerator.GetArtefactPrefix(gcpArtefactGenerator.FunctionArtefact),
+		gcpartefactgenerator.GetArtefactPrefix(gcpartefactgenerator.FunctionArtefact),
 		config.Name,
 	) + ".zip")
 	if err != nil {
@@ -33,7 +32,7 @@ func NewFunction(
 		*scope,
 		jsii.String(config.Name+"-sourceArchive"),
 		&google.StorageBucketObjectConfig{
-			Bucket: (*archiveBucket).Name(),
+			Bucket: (*s.archiveBucket).Name(),
 			Name:   jsii.String(config.Name + ":" + *cdktf.Fn_Urlencode(cdktf.Fn_Filebase64sha512(&archivePath)) + ".zip"),
 			Source: &archivePath,
 		},

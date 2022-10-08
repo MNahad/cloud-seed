@@ -53,26 +53,29 @@ func (m *Manifest) UnmarshalJSON(b []byte) error {
 
 func DetectManifests(config *project.Config) ([]Manifest, error) {
 	manifests := make([]Manifest, 0, 100)
-	err := filepath.WalkDir(config.BuildConfig.Dir, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if !d.IsDir() && strings.HasSuffix(d.Name(), ".cloudseed.json") {
-			raw, err := os.ReadFile(path)
+	err := filepath.WalkDir(
+		filepath.Join(config.Path, config.BuildConfig.Dir),
+		func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return err
 			}
-			manifest := new(Manifest)
-			err = json.Unmarshal(raw, manifest)
-			if err != nil {
+			if !d.IsDir() && strings.HasSuffix(d.Name(), ".cloudseed.json") {
+				raw, err := os.ReadFile(path)
+				if err != nil {
+					return err
+				}
+				manifest := new(Manifest)
+				err = json.Unmarshal(raw, manifest)
+				if err != nil {
+					return err
+				}
+				manifest.Path = path
+				manifests = append(manifests, *manifest)
 				return err
 			}
-			manifest.Path = path
-			manifests = append(manifests, *manifest)
-			return err
-		}
-		return nil
-	})
+			return nil
+		},
+	)
 	return manifests, err
 }
 

@@ -8,13 +8,13 @@ import (
 	"github.com/hashicorp/terraform-cdk-go/cdktf"
 	"github.com/mnahad/cloud-seed/services/config/module"
 	"github.com/mnahad/cloud-seed/services/config/project"
-	"github.com/mnahad/cloud-seed/services/stackbuilder/gcp/service"
+	serviceendpoint "github.com/mnahad/cloud-seed/services/stackbuilder/gcp/service/endpoint"
 )
 
-func NewGateway(
+func (n *networking) NewGateway(
 	scope *cdktf.TerraformStack,
 	modules []*module.Module,
-	endpoints *service.Endpoints,
+	endpoints *serviceendpoint.Endpoints,
 	options *project.Config,
 	betaProvider *googlebeta.GoogleBetaProvider,
 ) (*googlebeta.GoogleApiGatewayGateway, *googlebeta.GoogleApiGatewayApiConfigA) {
@@ -73,13 +73,13 @@ func NewGateway(
 	return &gateway, &apiConfig
 }
 
-func IsGateway(n *module.Networking) bool {
-	return len(n.Ingress.Gateway.Paths) > 0 || len(n.Ingress.Gateway.Components.SecuritySchemes) > 0
+func (n *networking) IsGateway(mn *module.Networking) bool {
+	return len(mn.Ingress.Gateway.Paths) > 0 || len(mn.Ingress.Gateway.Components.SecuritySchemes) > 0
 }
 
 func generateGatewayOpenapiDocumentContents(
 	modules []*module.Module,
-	endpoints *service.Endpoints,
+	endpoints *serviceendpoint.Endpoints,
 	options *project.Config,
 ) *string {
 	var gateway gateway
