@@ -1,0 +1,16 @@
+{
+  "hello-world": {
+    "eventSource": {
+      "kind": "http"
+    },
+    "service": {
+      "kind": "function",
+      "gcp": {
+        "buildConfig": {
+          "runtime": "nodejs18",
+          "entryPoint": "helloWorld"
+        }
+      }
+    }
+  }
+}

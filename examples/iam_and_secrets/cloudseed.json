@@ -1,0 +1,50 @@
+{
+  "default": {
+    "cloud": {
+      "gcp": {
+        "provider": {
+          "project": "{project-id}",
+          "region": "europe-west2"
+        }
+      }
+    },
+    "buildConfig": {
+      "dir": "./src",
+      "outDir": "./generated"
+    },
+    "environmentConfig": {
+      "secretVariableNames": [
+        "nonprod-key1",
+        "nonprod-key2"
+      ]
+    }
+  },
+  "environmentOverrides": {
+    "production": {
+      "cloud": {
+        "gcp": {
+          "provider": {
+            "project": "{production-project}",
+            "region": "europe-west2"
+          },
+          "security": {
+            "runtimeServiceAccount": {
+              "accountId": "custom-named-account"
+            },
+            "secretManagerSecret": {
+              "replication": {
+                "automatic": true
+              }
+            }
+          }
+        }
+      },
+      "environmentConfig": {
+        "secretVariableNames": [
+          "production-key1",
+          "production-key2"
+        ]
+      }
+    }
+  }
+}

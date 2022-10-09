@@ -1,0 +1,68 @@
+{
+  "start": {
+    "eventSource": {
+      "kind": "http"
+    },
+    "service": {
+      "kind": "function",
+      "gcp": {
+        "buildConfig": {
+          "runtime": "python310"
+        }
+      }
+    },
+    "orchestration": {
+      "workflow": {
+        "start": true,
+        "input": {
+          "expression": {
+            "gcp": "{\"counter\":0}"
+          }
+        },
+        "output": {
+          "expression": {
+            "gcp": "loopVar"
+          }
+        },
+        "next": {
+          "jump": {
+            "serviceName": "loop-entry"
+          }
+        }
+      }
+    }
+  },
+  "loop-entry": {
+    "eventSource": {
+      "kind": "http"
+    },
+    "service": {
+      "kind": "function",
+      "gcp": {
+        "buildConfig": {
+          "runtime": "python310",
+          "entryPoint": "loop_entry"
+        }
+      }
+    },
+    "orchestration": {
+      "workflow": {
+        "input": {
+          "expression": {
+            "gcp": "${loopVar.body}"
+          }
+        },
+        "output": {
+          "expression": {
+            "gcp": "loopVar"
+          }
+        },
+        "next": {
+          "jump": {
+            "serviceName": "loop-check"
+          }
+        }
+      }
+    }
+  }
+}

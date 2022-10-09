@@ -1,0 +1,200 @@
+{
+  "http-api-gateway": {
+    "eventSource": {
+      "kind": "http"
+    },
+    "service": {
+      "kind": "function",
+      "gcp": {
+        "buildConfig": {
+          "runtime": "python310",
+          "entryPoint": "http"
+        }
+      }
+    },
+    "networking": {
+      "ingress": {
+        "gateway": {
+          "paths": {
+            "/main": {
+              "get": {
+                "responses": {
+                  "200": {
+                    "description": "OK"
+                  }
+                }
+              }
+            },
+            "/postip/{path}": {
+              "post": {
+                "parameters": [
+                  {
+                    "name": "x-custom-header",
+                    "in": "header",
+                    "content": {
+                      "text/plain": {
+                        "schema": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "name": "values",
+                    "in": "query",
+                    "content": {
+                      "application/json": {
+                        "schema": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "name": "path",
+                    "in": "path",
+                    "required": true,
+                    "content": {
+                      "text/plain": {
+                        "schema": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                ],
+                "requestBody": {
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "type": "object"
+                      }
+                    }
+                  }
+                },
+                "responses": {
+                  "200": {
+                    "description": "OK",
+                    "headers": {
+                      "x-backend": {
+                        "content": {
+                          "text/plain": {
+                            "schema": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "x-data": {
+                        "content": {
+                          "text/plain": {
+                            "schema": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "content": {
+                      "application/json": {
+                        "schema": {
+                          "type": "object"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "components": {
+            "securitySchemes": {
+              "api_key_query": {
+                "type": "apiKey",
+                "name": "api_key",
+                "in": "query"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "http-api-gateway-static-ip": {
+    "eventSource": {
+      "kind": "http"
+    },
+    "service": {
+      "kind": "function",
+      "gcp": {
+        "buildConfig": {
+          "runtime": "python310",
+          "entryPoint": "http_post"
+        }
+      }
+    },
+    "networking": {
+      "ingress": {
+        "gateway": {
+          "paths": {
+            "/my-path": {
+              "post": {
+                "responses": {
+                  "200": {
+                    "description": "OK"
+                  },
+                  "400": {
+                    "description": "Bad Request"
+                  }
+                },
+                "security": [
+                  {
+                    "api_key_query": []
+                  },
+                  {
+                    "api_key_header": []
+                  }
+                ]
+              }
+            }
+          },
+          "components": {
+            "securitySchemes": {
+              "api_key_header": {
+                "type": "apiKey",
+                "name": "x-api-key",
+                "in": "header"
+              }
+            }
+          }
+        }
+      },
+      "egress": {
+        "staticIp": true
+      }
+    }
+  },
+  "http-private": {
+    "eventSource": {
+      "kind": "http"
+    },
+    "service": {
+      "kind": "function",
+      "gcp": {
+        "buildConfig": {
+          "runtime": "python310",
+          "entryPoint": "http"
+        }
+      }
+    },
+    "networking": {
+      "internal": true
+    }
+  }
+}

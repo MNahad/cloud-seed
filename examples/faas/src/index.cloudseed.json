@@ -1,0 +1,15 @@
+{
+  "http": {
+    "eventSource": {
+      "kind": "http"
+    },
+    "service": {
+      "kind": "function",
+      "gcp": {
+        "buildConfig": {
+          "runtime": "nodejs18"
+        }
+      }
+    }
+  }
+}

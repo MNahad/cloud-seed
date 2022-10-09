@@ -1,0 +1,54 @@
+{
+  "pubsub-event": {
+    "eventSource": {
+      "kind": "topic",
+      "gcp": {
+        "name": "my-topic"
+      }
+    },
+    "service": {
+      "kind": "function",
+      "gcp": {
+        "buildConfig": {
+          "runtime": "python310",
+          "entryPoint": "pubsub_event"
+        }
+      }
+    }
+  },
+  "queue-event": {
+    "eventSource": {
+      "kind": "queue",
+      "gcp": {
+        "name": "my-queue"
+      }
+    },
+    "service": {
+      "kind": "function",
+      "gcp": {
+        "buildConfig": {
+          "runtime": "python310",
+          "entryPoint": "queue_event"
+        }
+      }
+    }
+  },
+  "schedule-event": {
+    "eventSource": {
+      "kind": "schedule",
+      "gcp": {
+        "name": "my-schedule",
+        "schedule": "0 0 * * *"
+      }
+    },
+    "service": {
+      "kind": "function",
+      "gcp": {
+        "buildConfig": {
+          "runtime": "python310",
+          "entryPoint": "schedule_event"
+        }
+      }
+    }
+  }
+}

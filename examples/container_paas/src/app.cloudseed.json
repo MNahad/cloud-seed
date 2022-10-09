@@ -1,0 +1,47 @@
+{
+  "http": {
+    "eventSource": {
+      "kind": "http"
+    },
+    "service": {
+      "kind": "container",
+      "gcp": {
+        "traffic": [
+          {
+            "percent": 100,
+            "latestRevision": true
+          }
+        ]
+      }
+    }
+  },
+  "event": {
+    "eventSource": {
+      "kind": "event",
+      "gcp": {
+        "name": "bucket",
+        "matchingCriteria": [
+          {
+            "attribute": "bucket",
+            "value": "my-bucket"
+          },
+          {
+            "attribute": "type",
+            "value": "google.cloud.storage.object.v1.finalized"
+          }
+        ]
+      }
+    },
+    "service": {
+      "kind": "container",
+      "gcp": {
+        "traffic": [
+          {
+            "percent": 100,
+            "latestRevision": true
+          }
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "default": {
+    "cloud": {
+      "gcp": {
+        "provider": {
+          "project": "{project-id}",
+          "region": "europe-west2"
+        }
+      }
+    },
+    "buildConfig": {
+      "dir": "./src",
+      "outDir": "./generated"
+    }
+  },
+  "environmentOverrides": {
+    "dev": {
+      "cloud": {
+        "gcp": {
+          "provider": {
+            "project": "{dev-project}"
+          }
+        }
+      },
+      "environmentConfig": {
+        "runtimeEnvironmentVariables": {
+          "FOO": "DEV1",
+          "BAR": "DEV2"
+        }
+      }
+    },
+    "production": {
+      "cloud": {
+        "gcp": {
+          "provider": {
+            "project": "{production-project}"
+          }
+        }
+      },
+      "environmentConfig": {
+        "runtimeEnvironmentVariables": {
+          "FOO": "PROD1",
+          "BAR": "PROD2"
+        }
+      }
+    }
+  }
+}

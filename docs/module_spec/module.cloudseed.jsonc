@@ -1,0 +1,202 @@
+{
+  // Map of modules
+  "[serviceName]": {
+    // Name override (if required)
+    "name": "string",
+    // Service's event source
+    "eventSource": {
+      // Kind (pick one) (defaults to 'http')
+      "kind": "'event' | 'topic' | 'queue' | 'schedule' | 'http'",
+      // GCP Spec
+      // One of:
+      // google.EventarcTriggerConfig
+      // google.PubsubTopicConfig
+      // google.CloudTasksQueueConfig
+      // google.CloudSchedulerJobConfig
+      // (not required if kind is 'http')
+      "gcp": "object",
+      // AWS Spec
+      "aws": "object"
+    },
+    // Service config
+    "service": {
+      // Kind (pick one)
+      "kind": "'function' | 'container'",
+      // GCP Spec
+      // One of:
+      // google.Cloudfunctions2FunctionConfig
+      // google.CloudRunServiceConfig
+      "gcp": "object",
+      // AWS Spec
+      "aws": "object"
+    },
+    // Networking options
+    "networking": {
+      // Does this service need to be internal-only?
+      "internal": "boolean",
+      // Ingress options
+      "ingress": {
+        // API Gateway options
+        // This object closely follows OpenAPI Specification (OAS) 3.1.0
+        "gateway": {
+          // OAS Paths
+          "paths": {
+            // Map of OAS Paths
+            "[path]": {
+              // Map of OAS Operations
+              "[verb]": {
+                // Array of OAS Parameters
+                "parameters": [
+                  {
+                    // OAS Parameter Name
+                    "name": "string",
+                    // OAS Parameter In
+                    "in": "string",
+                    // OAS Parameter Required
+                    "required": "boolean",
+                    // OAS Content
+                    "content": {
+                      // Map of OAS Media Type
+                      "[mediaType]": {
+                        // OAS Media Type JSON Schema
+                        "schema": "{ ...jsonSchema }"
+                      }
+                    }
+                  }
+                ],
+                // OAS Request Body
+                "requestBody": {
+                  // OAS Content
+                  "content": {
+                    // Map of OAS Media Type
+                    "[mediaType]": {
+                      // OAS Media Type JSON Schema
+                      "schema": "{ ...jsonSchema }"
+                    }
+                  }
+                },
+                // OAS Responses
+                "responses": {
+                  // Map of OAS Responses
+                  "[httpStatusCode]": {
+                    // OAS Response Description
+                    "description": "string",
+                    // OAS Response Headers
+                    "headers": {
+                      // Map of OAS Response Headers
+                      "[header]": {
+                        // OAS Content
+                        "content": {
+                          // Map of OAS Media Type
+                          "[mediaType]": {
+                            // OAS Media Type JSON Schema
+                            "schema": "{ ...jsonSchema }"
+                          }
+                        }
+                      }
+                    },
+                    // OAS Content
+                    "content": {
+                      // Map of OAS Media Type
+                      "[mediaType]": {
+                        // OAS Media Type JSON Schema
+                        "schema": "{ ...jsonSchema }"
+                      }
+                    }
+                  }
+                },
+                // Array of OAS Security Requirements
+                "security": [
+                  {
+                    // Map of OAS Security Schemes
+                    "[scheme]": ["string"]
+                  }
+                ]
+              }
+            }
+          },
+          // OAS Components
+          "components": {
+            // OAS Security Schemes
+            "securitySchemes": {
+              // Map of OAS Security Schemes
+              "[scheme]": {
+                // OAS Security Scheme Type
+                "type": "string",
+                // OAS Security Scheme Name
+                "name": "string",
+                // OAS Security Scheme In
+                "in": "string"
+              }
+            }
+          }
+        }
+      },
+      // Egress options
+      "egress": {
+        // Does this service require an egress static IP address?
+        "staticIp": "boolean"
+      }
+    },
+    // Security options
+    "security": {
+      // Can this service be invoked without any authentication?
+      "noAuthentication": "boolean"
+    },
+    // Orchestration options
+    "orchestration": {
+      // Workflow options
+      "workflow": {
+        // Is this service the start state of the workflow?
+        "start": "boolean",
+        // Is this service the end state of the workflow?
+        "end": "boolean",
+        // Input options
+        "input": {
+          // Input expression
+          "expression": {
+            // GCP expression
+            "gcp": "string",
+            // AWS expression
+            "aws": "string"
+          }
+        },
+        // Output options
+        "output": {
+          // Output expression
+          "expression": {
+            // GCP expression
+            "gcp": "string",
+            // AWS expression
+            "aws": "string"
+          }
+        },
+        // Transition to next state
+        "next": {
+          // Jump option
+          "jump": {
+            // Service Name to jump to
+            "serviceName": "string"
+          },
+          // Array of condition options
+          "condition": [
+            {
+              // Condition expression to evaluate
+              "expression": {
+                // GCP expression
+                "gcp": "string",
+                // AWS expression
+                "aws": "string"
+              },
+              // Service Name to transition to on success
+              "serviceName": "string"
+            }
+          ]
+        }
+      }
+    },
+    "metadata": {
+      "[key]": "string"
+    }
+  }
+}

@@ -1,0 +1,124 @@
+{
+  // the default config values go here
+  "default": {
+    // Cloud config
+    "cloud": {
+      // GCP config
+      "gcp": {
+        // CDKTF Google Provider config
+        // google.GoogleProviderConfig
+        "provider": "object",
+        // CDKTF Google Beta Provider config
+        // googlebeta.GoogleBetaProviderConfig
+        "betaProvider": "object",
+        // CDKTF Google Provider networking overrides
+        "networking": {
+          // API Gateway overrides
+          "apiGateway": {
+            // googlebeta.GoogleApiGatewayApiConfig
+            "api": "object",
+            // googlebeta.GoogleApiGatewayApiConfigAConfig
+            "apiConfig": "object",
+            // googlebeta.GoogleApiGatewayGatewayConfig
+            "gateway": "object"
+          },
+          // Static IP NAT overrides
+          "staticIpNetwork": {
+            // google.ComputeAddressConfig
+            "address": "object",
+            // google.ComputeNetworkConfig
+            "network": "object",
+            // google.ComputeRouterConfig
+            "router": "object",
+            // google.ComputeRouterNatConfig
+            "routerNat": "object",
+            // google.VpcAccessConnectorConfig
+            "vpcAccessConnector": "object"
+          }
+        },
+        // CDKTF Google Provider orchestration overrides
+        "orchestration": {
+          // google.WorkflowsWorkflowConfig
+          "workflow": "object"
+        },
+        // CDKTF Google Provider security overrides
+        "security": {
+          // google.ServiceAccountConfig
+          "runtimeServiceAccount": "object",
+          // google.SecretManagerSecretConfig
+          "secretManagerSecret": "object"
+        },
+        // CDKTF Google Provider service overrides
+        "service": {
+          // overrides for services that manage source code storage
+          "sourceCodeStorage": {
+            // google.ArtifactRegistryRepositoryConfig
+            "artifactRegistryRepository": "object",
+            // google.StorageBucketConfig
+            "bucket": "object",
+            // google.StorageBucketConfig
+            "stagingBucket": "object"
+          }
+        }
+      }
+    },
+    // Terraform config
+    "tfConfig": {
+      // Backend config
+      "backend": {
+        // Type (pick one) (defaults to 'local')
+        "type": "'gcs' | 's3' | 'local'",
+        // One of:
+        // cdktf.GcsBackendProps
+        // cdktf.S3BackendProps
+        // cdktf.LocalBackendProps
+        "options": "object"
+      }
+    },
+    // Build config
+    "buildConfig": {
+      // Source code input directory path
+      "dir": "string",
+      // IaC output directory path
+      "outDir": "string",
+      // Any files to add to IaC
+      "files": {
+        // Networking filepaths
+        "networking": {
+          // GCP filepaths
+          "gcp": {
+            // API Gateway spec filepath
+            "gatewayPath": "string"
+          }
+        },
+        // Orchestration filepaths
+        "orchestration": {
+          // GCP filepaths
+          "gcp": {
+            // Workflows spec filepath
+            "workflowPath": "string"
+          }
+        }
+      }
+    },
+    // Runtime env variables and secrets
+    "environmentConfig": {
+      // Runtime env variables
+      "runtimeEnvironmentVariables": {
+        // Map of key-value pairs
+        "[key]": "string"
+      },
+      // Array of names to add to cloud secret store
+      "secretVariableNames": ["string"]
+    },
+    "metadata": {
+      "[key]": "string"
+    }
+  },
+  // any desired override values for each environment "env" go here
+  // structure is the same as the "default" object
+  "environmentOverrides": {
+    // Map of env and configs
+    "[env]": "{ ...config }"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "http-insecure": {
+    "eventSource": {
+      "kind": "http"
+    },
+    "service": {
+      "kind": "function",
+      "gcp": {
+        "buildConfig": {
+          "runtime": "nodejs18",
+          "entryPoint": "http"
+        }
+      }
+    },
+    "security": {
+      "noAuthentication": true
+    }
+  }
+}

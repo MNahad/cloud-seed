@@ -1,0 +1,16 @@
+{
+  "default": {
+    "cloud": {
+      "gcp": {
+        "provider": {
+          "project": "{project-id}",
+          "region": "europe-west2"
+        }
+      }
+    },
+    "buildConfig": {
+      "dir": "./src",
+      "outDir": "./generated"
+    }
+  }
+}
