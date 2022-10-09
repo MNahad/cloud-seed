@@ -135,7 +135,7 @@ Refer to [the examples](/examples/) for sample patterns.
 
 This software uses the following modules whose distribution and usage is governed by the terms of the MPL-2.0 licence:
 
-- [cdktf-provider-google-go](github.com/hashicorp/cdktf-provider-google-go)
-- [cdktf-provider-googlebeta-go](github.com/hashicorp/cdktf-provider-googlebeta-go)
-- [cdktf-provider-null-go](github.com/hashicorp/cdktf-provider-null-go)
-- [terraform-cdk-go](github.com/hashicorp/terraform-cdk-go)
+- [cdktf-provider-google-go](https://github.com/hashicorp/cdktf-provider-google-go)
+- [cdktf-provider-googlebeta-go](https://github.com/hashicorp/cdktf-provider-googlebeta-go)
+- [cdktf-provider-null-go](https://github.com/hashicorp/cdktf-provider-null-go)
+- [terraform-cdk-go](https://github.com/hashicorp/terraform-cdk-go)
